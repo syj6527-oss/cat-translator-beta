@@ -1,8 +1,8 @@
 {
     "name": "cat-translator-beta",
-    "display_name": "🐱트랜스레이터 (Beta)",
-    "version": "18.0.0-beta",
-    "description": "404 완치, 토큰 알림, 키 보기, 회색박스 제거 (최종 베타)",
+    "display_name": "🐱트랜스레이터 (Beta) - 집사 모드",
+    "version": "18.5.0-beta",
+    "description": "전체 채팅 번역, 번역 중단, 기록 삭제 기능 추가",
     "author": "냥헴 & GPT",
     "js": "index.js",
     "css": "style.css"
