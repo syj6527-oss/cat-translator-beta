@@ -1,8 +1,8 @@
 {
     "name": "cat-translator-beta",
     "display_name": "🐱트랜스레이터 (Beta)",
-    "version": "17.8.0-beta",
-    "description": "오류 수정 및 토큰 알림 부활 (주말 대수술 준비)",
+    "version": "17.9.0-beta",
+    "description": "404 에러 완치 및 토큰 알림 시스템 장착",
     "author": "냥헴 & GPT",
     "js": "index.js",
     "css": "style.css"
