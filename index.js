@@ -1,3 +1,5 @@
+console.log("CAT TRANSLATOR LOADED");
+
 import { extension_settings, getContext } from '../../../extensions.js';
 import { secret_state, SECRET_KEYS } from '../../../secrets.js';
 import { callGenericPopup, POPUP_TYPE } from '../../../utils.js';
