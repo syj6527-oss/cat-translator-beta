@@ -7,7 +7,7 @@ const stContext = getContext();
 let translationCache = {};
 let isTranslatingInput = false;
 
-// 💊 알림창
+// 💊 알약 알림창 (최상단 고정)
 function catNotify(message, type = 'success') {
     $('.cat-notification').remove();
     const bgColor = type === 'success' ? '#2ecc71' : (type === 'warning' ? '#f1c40f' : '#e74c3c');
@@ -20,7 +20,7 @@ function catNotify(message, type = 'success') {
     }, 2500);
 }
 
-const defaultPrompt = 'You are a direct translation engine. Translate the input into {{language}} exactly.';
+const defaultPrompt = 'You are a direct translation engine. Translate the input into {{language}} exactly. Output ONLY the raw translation without any explanations.';
 
 const defaultSettings = {
     profile: '', 
@@ -50,10 +50,7 @@ function saveSettings() {
 
 function cleanResult(text) {
     if (!text) return "";
-    return text
-        .replace(/^(번역|Translation|Output):\s*/gi, "")
-        .replace(/\{+(.*?)\}+/g, "$1") 
-        .trim();
+    return text.replace(/^(번역|Translation|Output):\s*/gi, "").replace(/\{+(.*?)\}+/g, "$1").trim();
 }
 
 function applyPreReplace(text, isToEnglish) {
@@ -79,7 +76,7 @@ function applyPreReplace(text, isToEnglish) {
     return processedText;
 }
 
-// 🚀 스마트 번역 API
+// 🚀 번역 요청 API
 async function fetchTranslation(text, forceLang = null, prevTranslation = null) {
     if (!text || text.trim() === "") return null;
     
@@ -94,7 +91,7 @@ async function fetchTranslation(text, forceLang = null, prevTranslation = null) 
 
     const targetLang = isToEnglish ? "English" : settings.targetLang;
     
-    // 🧠 [v17.8.0 부활] 캐시 확인 및 토큰 아낌 알림!
+    // 🧠 [v17.9.0] 캐시 시스템 및 토큰 알림 (절약 모드)
     const cacheKey = `${targetLang}_${text.trim()}`;
     if (!prevTranslation && translationCache[cacheKey]) {
         catNotify("🐱 캐시 사용: 토큰을 아꼈습니다!", "success");
@@ -121,28 +118,39 @@ NO EXPLANATIONS. NO ALTERNATIVES. NO CONVERSATIONAL FILLER.`;
             result = typeof response === 'string' ? response : (response.content || "");
         } else {
             const apiKey = settings.customKey || secret_state[SECRET_KEYS.MAKERSUITE];
-            if (!apiKey) { catNotify("🐱 [Beta] API 키 오류!", "error"); return null; }
+            if (!apiKey) { catNotify("🐱 [Beta] API 키 없음!", "error"); return null; }
             
-            const model = settings.directModel.startsWith('models/') ? settings.directModel : `models/${settings.directModel}`;
+            // 🎯 404 에러 방지를 위한 모델 이름 정밀 정합성 체크
+            let modelId = settings.directModel || "gemini-1.5-flash";
+            if (modelId.startsWith('models/')) modelId = modelId.substring(7);
             
-            // 🎯 스크린샷의 124줄 오류 수정 (fetch 앞부분 완벽 복원)
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: "user", parts: [{ text: promptWithText }] }],
-                    generationConfig: { temperature: 0.0, maxOutputTokens: 8192 }
-                })
-            });
-            const data = await response.json();
+            // 지수 백오프 재시도 로직
+            const tryFetch = async (retries = 3) => {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: "user", parts: [{ text: promptWithText }] }],
+                        generationConfig: { temperature: 0.0, maxOutputTokens: 8192 }
+                    })
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 404 && retries > 0) return await tryFetch(retries - 1);
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || "네트워크 오류");
+                }
+                return await response.json();
+            };
             
+            const data = await tryFetch();
             const parts = data.candidates?.[0]?.content?.parts || [];
             const actualPart = parts.find(p => !p.thought) || parts[parts.length - 1]; 
             result = actualPart?.text?.trim() || "";
         }
         
         const translatedText = cleanResult(result) || text;
-        if (translatedText) translationCache[cacheKey] = translatedText;
+        if (translatedText && translatedText !== text) translationCache[cacheKey] = translatedText;
         return { text: translatedText, lang: targetLang };
     } catch (e) {
         catNotify("🐱 [Beta] 에러: " + e.message, "error");
@@ -162,7 +170,7 @@ async function processMessage(id, isInput = false) {
     try {
         const mesBlock = $(`.mes[mesid="${msgId}"]`);
         
-        // 🎯 갓피티의 절대 타겟팅
+        // 🎯 갓피티의 절대 타겟팅 (수정창)
         let editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         
         if (editArea.length > 0) {
@@ -178,13 +186,12 @@ async function processMessage(id, isInput = false) {
             let forceLang = isRetry ? lastTargetLang : null;
             let prevTrans = isRetry ? currentText : null;
 
-            catNotify(isRetry ? "🐱 [Beta] 재번역 중..." : "🐱 [Beta] 번역 중...", "success");
+            catNotify(isRetry ? "🐱 [Beta] 다른 표현 찾는 중..." : "🐱 [Beta] 번역 중...", "success");
             
             const transResult = await fetchTranslation(textToTranslate, forceLang, prevTrans);
             
             if (transResult && transResult.text !== currentText) {
                 const translated = transResult.text;
-                
                 editArea.data('cat-original-text', textToTranslate);
                 editArea.data('cat-last-translated', translated);
                 editArea.data('cat-last-target-lang', transResult.lang);
@@ -197,8 +204,7 @@ async function processMessage(id, isInput = false) {
                 editArea.val(translated);
                 targetEl.dispatchEvent(new Event('input', { bubbles: true }));
                 targetEl.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                catNotify("🎯 [Beta] 완료!", "success");
+                catNotify("🎯 [Beta] 번역 완료!", "success");
             }
             return; 
         }
@@ -287,7 +293,7 @@ function injectInputButtons() {
             let forceLang = isRetry ? lastTargetLang : null;
             let prevTrans = isRetry ? currentText : null;
 
-            catNotify(isRetry ? "🐱 [Beta] 입력창 재번역..." : "🐱 [Beta] 입력창 번역...", "success");
+            catNotify(isRetry ? "🐱 [Beta] 입력창 재번역 중..." : "🐱 [Beta] 입력창 번역 중...", "success");
             
             const transResult = await fetchTranslation(textToTranslate, forceLang, prevTrans);
             
