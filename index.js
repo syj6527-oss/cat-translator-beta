@@ -1,7 +1,6 @@
 import { extension_settings, getContext } from '../../../../scripts/extensions.js';
 import { secret_state, SECRET_KEYS } from '../../../../scripts/secrets.js';
 
-// 🚨 정식 버전과 설정이 꼬이지 않도록 베타 전용 이름표를 붙입니다.
 const extName = "cat-translator-beta";
 const stContext = getContext();
 
@@ -80,7 +79,7 @@ function applyPreReplace(text, isToEnglish) {
     return processedText;
 }
 
-// 🚀 스마트 번역 API (재번역 파라미터 유지)
+// 🚀 스마트 번역 API
 async function fetchTranslation(text, forceLang = null, prevTranslation = null) {
     if (!text || text.trim() === "") return null;
     
@@ -94,9 +93,16 @@ async function fetchTranslation(text, forceLang = null, prevTranslation = null) 
     }
 
     const targetLang = isToEnglish ? "English" : settings.targetLang;
+    
+    // 🧠 [v17.8.0 부활] 캐시 확인 및 토큰 아낌 알림!
+    const cacheKey = `${targetLang}_${text.trim()}`;
+    if (!prevTranslation && translationCache[cacheKey]) {
+        catNotify("🐱 캐시 사용: 토큰을 아꼈습니다!", "success");
+        return { text: translationCache[cacheKey], lang: targetLang };
+    }
+
     let preReplacedText = applyPreReplace(text.trim(), isToEnglish);
     
-    // 💥 설명충 사살 지시문 (주말에 더 강화될 예정)
     const STRICT_DIRECTIVE = `[CRITICAL DIRECTIVE]
 YOU ARE A MACHINE. RETURN ONLY THE RAW TRANSLATED TEXT.
 NO EXPLANATIONS. NO ALTERNATIVES. NO CONVERSATIONAL FILLER.`;
@@ -115,36 +121,31 @@ NO EXPLANATIONS. NO ALTERNATIVES. NO CONVERSATIONAL FILLER.`;
             result = typeof response === 'string' ? response : (response.content || "");
         } else {
             const apiKey = settings.customKey || secret_state[SECRET_KEYS.MAKERSUITE];
-            if (!apiKey) { catNotify("🐱 API 키 오류!", "error"); return null; }
+            if (!apiKey) { catNotify("🐱 [Beta] API 키 오류!", "error"); return null; }
             
             const model = settings.directModel.startsWith('models/') ? settings.directModel : `models/${settings.directModel}`;
             
-            const tryFetch = async (retries = 1) => {
-                try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ role: "user", parts: [{ text: promptWithText }] }],
-                            generationConfig: { temperature: 0.0, maxOutputTokens: 8192 }
-                        })
-                    });
-                    return await res.json();
-                } catch(e) {
-                    if(retries > 0) return await tryFetch(retries - 1);
-                    throw e;
-                }
-            };
+            // 🎯 스크린샷의 124줄 오류 수정 (fetch 앞부분 완벽 복원)
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: "user", parts: [{ text: promptWithText }] }],
+                    generationConfig: { temperature: 0.0, maxOutputTokens: 8192 }
+                })
+            });
+            const data = await response.json();
             
-            const data = await tryFetch();
             const parts = data.candidates?.[0]?.content?.parts || [];
             const actualPart = parts.find(p => !p.thought) || parts[parts.length - 1]; 
             result = actualPart?.text?.trim() || "";
         }
         
-        return { text: cleanResult(result) || text, lang: targetLang };
+        const translatedText = cleanResult(result) || text;
+        if (translatedText) translationCache[cacheKey] = translatedText;
+        return { text: translatedText, lang: targetLang };
     } catch (e) {
-        catNotify("🐱 에러: " + e.message, "error");
+        catNotify("🐱 [Beta] 에러: " + e.message, "error");
         return null;
     }
 }
@@ -161,14 +162,13 @@ async function processMessage(id, isInput = false) {
     try {
         const mesBlock = $(`.mes[mesid="${msgId}"]`);
         
-        // 🎯 갓피티의 절대 타겟팅 (수정창)
+        // 🎯 갓피티의 절대 타겟팅
         let editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         
         if (editArea.length > 0) {
             let currentText = editArea.val().trim();
             if (!currentText) return;
 
-            // 🧠 텍스트박스 기억 읽기 (재번역 용)
             let lastTranslated = editArea.data('cat-last-translated');
             let originalText = editArea.data('cat-original-text');
             let lastTargetLang = editArea.data('cat-last-target-lang');
@@ -178,7 +178,7 @@ async function processMessage(id, isInput = false) {
             let forceLang = isRetry ? lastTargetLang : null;
             let prevTrans = isRetry ? currentText : null;
 
-            catNotify(isRetry ? "🐱 [Beta] 다른 표현으로 재번역 중..." : "🐱 [Beta] 스마트 번역 중...", "success");
+            catNotify(isRetry ? "🐱 [Beta] 재번역 중..." : "🐱 [Beta] 번역 중...", "success");
             
             const transResult = await fetchTranslation(textToTranslate, forceLang, prevTrans);
             
@@ -198,12 +198,11 @@ async function processMessage(id, isInput = false) {
                 targetEl.dispatchEvent(new Event('input', { bubbles: true }));
                 targetEl.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                catNotify(isRetry ? "🎯 [Beta] 재번역 완료!" : "🎯 [Beta] 번역 덮어쓰기 완료!", "success");
+                catNotify("🎯 [Beta] 완료!", "success");
             }
             return; 
         }
 
-        // 📝 일반 모드 (채팅창 자체 번역)
         let textToTranslate = isInput ? (msg.extra?.original_mes || msg.mes) : msg.mes;
         const transResult = await fetchTranslation(textToTranslate, (isInput ? "English" : null), (isInput ? (msg.extra?.original_mes ? msg.mes : null) : msg.extra?.display_text));
         
@@ -225,7 +224,6 @@ function revertMessage(id) {
     const msg = stContext.chat[msgId];
     if (!msg) return;
     
-    // 🎯 수정창 복구 지원
     let editArea = $(`.mes[mesid="${msgId}"]`).find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
     if (editArea.length > 0) {
         let originalText = editArea.data('cat-original-text');
@@ -236,12 +234,9 @@ function revertMessage(id) {
             else targetEl.value = originalText;
             editArea.val(originalText);
             targetEl.dispatchEvent(new Event('input', { bubbles: true }));
-            catNotify("🐱 [Beta] 원본 텍스트로 복구 완료!", "success");
-            
+            catNotify("🐱 [Beta] 복구 완료!", "success");
             editArea.removeData('cat-original-text');
             editArea.removeData('cat-last-translated');
-        } else {
-            catNotify("⚠️ [Beta] 복구할 원본이 없습니다.", "warning");
         }
         return;
     }
@@ -292,7 +287,7 @@ function injectInputButtons() {
             let forceLang = isRetry ? lastTargetLang : null;
             let prevTrans = isRetry ? currentText : null;
 
-            catNotify(isRetry ? "🐱 [Beta] 입력창 재번역 중..." : "🐱 [Beta] 스마트 번역 중...", "success");
+            catNotify(isRetry ? "🐱 [Beta] 입력창 재번역..." : "🐱 [Beta] 입력창 번역...", "success");
             
             const transResult = await fetchTranslation(textToTranslate, forceLang, prevTrans);
             
@@ -320,7 +315,7 @@ function injectInputButtons() {
             sendArea[0].dispatchEvent(new Event('input', { bubbles: true })); 
             sendArea.removeData('cat-original-text');
             sendArea.removeData('cat-last-translated');
-            catNotify("🐱 [Beta] 원본 복구 완료!", "success");
+            catNotify("🐱 [Beta] 원본 복구!", "success");
         } 
     });
 }
@@ -351,7 +346,6 @@ function setupUI() {
                 <div class="cat-setting-row cat-native-font"><label>번역 프롬프트</label><textarea id="ct-prompt" class="text_pole cat-native-font" rows="4">${settings.prompt}</textarea></div>
                 <div class="cat-setting-row cat-native-font"><label>사전 (A=B)</label><textarea id="ct-dictionary" class="text_pole cat-native-font" rows="3">${settings.dictionary}</textarea></div>
                 <button id="cat-save-btn" class="menu_button cat-native-font" style="margin-top: 5px;">설정 저장 🐱</button>
-                <div style="font-size: 0.7em; opacity: 0.3; text-align: center; margin-top: 5px;" class="cat-native-font">v17.7.0-beta The Sandbox</div>
             </div>
         </div>`;
     $('#extensions_settings').append(uiHtml);
