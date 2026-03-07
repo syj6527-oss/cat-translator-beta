@@ -27,6 +27,7 @@ export function catNotify(msg, type = 'success') {
 export function saveSettings(settings) {
     settings.customKey      = $('#ct-key').val();
     settings.modelId        = $('#ct-model').val();
+    settings.directModel    = $('#ct-direct-model').val() || settings.directModel; // 직접 연결 모드 모델
     settings.autoMode       = $('#ct-auto').val();
     settings.targetLang     = $('#ct-lang').val();
     settings.temperature    = parseFloat($('#ct-temp').val())  || 0.1;
@@ -77,6 +78,9 @@ export function injectButtons(settings, onTranslate, onRevert) {
             <div id="cat-input-container">
                 <span id="cat-input-trans" title="입력창 번역">🐱</span>
                 <span id="cat-input-revert" class="fa-solid fa-rotate-left" title="원문 복구"></span>
+                <span id="cat-batch-btn" title="전체 번역" style="cursor:pointer; font-size:1.1em; color:#2ecc71; opacity:0.7; transition:0.2s;"><i class="fa-solid fa-language"></i></span>
+                <span id="cat-abort-btn" title="번역 중단" style="display:none; cursor:pointer; font-size:1.1em; color:#e74c3c;"><i class="fa-solid fa-stop"></i></span>
+                <span id="cat-progress-label" style="display:none; font-size:0.7em; opacity:0.7; white-space:nowrap;"></span>
             </div>
         `);
         $('#send_but').before(inputContainer);
@@ -123,7 +127,7 @@ export function setupUI(settings, { onSave, onBatch, onAbort, onClear }) {
                 </select>
             </div>
 
-            <!-- 직접 연결 모드일 때만 표시되는 API 키 입력 -->
+            <!-- 직접 연결 모드일 때만 표시되는 API 키 + 모델 선택 -->
             <div class="cat-field" id="ct-direct-mode" style="display:${settings.modelId==='direct'?'block':'none'};">
                 <label>API Key</label>
                 <div style="display:flex; align-items:center; gap:5px;">
@@ -131,6 +135,18 @@ export function setupUI(settings, { onSave, onBatch, onAbort, onClear }) {
                            value="${settings.customKey}" style="flex:1;">
                     <span id="ct-key-toggle" style="cursor:pointer;" title="보이기/숨기기">🐾</span>
                 </div>
+                <!-- 직접 연결 모드 전용 모델 선택 -->
+                <label style="margin-top:8px;">모델 선택</label>
+                <select id="ct-direct-model" class="text_pole cat-native-font" style="margin-top:4px;">
+                    <optgroup label="🐱 Flash (가성비)">
+                        <option value="gemini-1.5-flash"         ${settings.directModel==='gemini-1.5-flash'?'selected':''}>Gemini 1.5 Flash</option>
+                        <option value="gemini-2.0-flash"         ${settings.directModel==='gemini-2.0-flash'?'selected':''}>Gemini 2.0 Flash</option>
+                    </optgroup>
+                    <optgroup label="🐯 Pro (고성능)">
+                        <option value="gemini-1.5-pro"           ${settings.directModel==='gemini-1.5-pro'?'selected':''}>Gemini 1.5 Pro</option>
+                        <option value="gemini-2.0-pro-exp-02-05" ${settings.directModel==='gemini-2.0-pro-exp-02-05'?'selected':''}>Gemini 2.0 Pro Exp</option>
+                    </optgroup>
+                </select>
             </div>
 
             <!-- 자동 모드 -->
@@ -199,35 +215,6 @@ export function setupUI(settings, { onSave, onBatch, onAbort, onClear }) {
             <!-- 설정 저장 버튼 -->
             <button id="cat-save-btn" class="menu_button cat-native-font">설정 저장 🐱</button>
 
-            <hr style="border-color:rgba(255,255,255,0.1); margin:10px 0;">
-
-            <!-- 전체 채팅 번역 -->
-            <div class="cat-field">
-                <label>전체 채팅 번역 📦</label>
-                <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                    <select id="ct-batch-count" class="text_pole cat-native-font"
-                            style="flex:1; min-width:80px;">
-                        <option value="10">최근 10개</option>
-                        <option value="30">최근 30개</option>
-                        <option value="50">최근 50개</option>
-                        <option value="all">전체</option>
-                    </select>
-                    <button id="cat-batch-btn" class="menu_button cat-native-font"
-                            style="flex:1;">번역 시작 🚀</button>
-                </div>
-                <!-- 진행률 바 -->
-                <div id="cat-progress-wrap" style="display:none; margin-top:8px;">
-                    <div id="cat-progress-bar-bg">
-                        <div id="cat-progress-bar"></div>
-                    </div>
-                    <div id="cat-progress-label">0 / 0</div>
-                </div>
-            </div>
-
-            <!-- 번역 중단 버튼 (배치 번역 중에만 표시됨) -->
-            <button id="cat-abort-btn" class="menu_button cat-native-font"
-                    style="display:none;">🛑 번역 중단</button>
-
             <!-- 번역 기록 전체 삭제 -->
             <button id="cat-clear-btn" class="menu_button cat-native-font">🗑️ 번역 기록 전체 삭제</button>
 
@@ -259,33 +246,23 @@ export function setupUI(settings, { onSave, onBatch, onAbort, onClear }) {
     });
 
     // 버튼 이벤트 → main.js에서 넘겨받은 핸들러 연결
-    $('#cat-save-btn').on('click',  () => { onSave(); catNotify("🐱 설정 저장 완료!"); });
-    $('#cat-batch-btn').on('click', () => {
-        const val = $('#ct-batch-count').val();
-        onBatch(val === 'all' ? 'all' : parseInt(val));
-    });
-    $('#cat-abort-btn').on('click', onAbort);
+    $('#cat-save-btn').on('click', () => { onSave(); catNotify("🐱 설정 저장 완료!"); });
     $('#cat-clear-btn').on('click', onClear);
 }
 
 // ── 배치 번역 진행률 업데이트 ────────────────
 export function updateProgress(done, total) {
     const pct = Math.round((done / total) * 100);
-    $('#cat-progress-bar').css('width', pct + '%');
-    $('#cat-progress-label').text(`${done} / ${total} (${pct}%)`);
+    $('#cat-progress-label').show().text(`${done}/${total} (${pct}%)`);
 }
 
 // ── 배치 번역 UI 상태 전환 ───────────────────
 // active: true면 "번역 중" 상태, false면 "대기" 상태
 export function setBatchUIState(active) {
-    $('#cat-batch-btn').prop('disabled', active);
-    $('#cat-abort-btn').toggle(active);
-    $('#cat-progress-wrap').toggle(active);
+    $('#cat-batch-btn').toggle(!active);   // 번역 중엔 시작 버튼 숨김
+    $('#cat-abort-btn').toggle(active);    // 번역 중에만 중단 버튼 표시
     if (!active) {
-        // 완료 후 2초 뒤 진행률 바 숨김
-        setTimeout(() => {
-            $('#cat-progress-wrap').hide();
-            $('#cat-progress-bar').css('width', '0%');
-        }, 2000);
+        // 완료 후 진행률 텍스트 숨김
+        setTimeout(() => { $('#cat-progress-label').hide().text(''); }, 2000);
     }
 }
