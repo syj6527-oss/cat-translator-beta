@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.0.0 - ui.js
+// 🐱 Cat Translator v18.1.0 - ui.js
 // UI: 설정 패널, 버튼 주입, 드래그 사전, 벌크 번역, 히스토리
 // ============================================================
 
@@ -18,17 +18,14 @@ let isTranslatingInput = false;
 export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     if ($('#cat-trans-container').length) return;
 
-    // 연결 프로필 옵션
     let profileOptions = '<option value="">⚡ 직접 연결 모드</option>';
     (stContext.extensionSettings?.connectionManager?.profiles || []).forEach(p => {
         profileOptions += `<option value="${p.id}">${p.name}</option>`;
     });
 
-    // 언어 옵션
     const languages = ['Korean', 'English', 'Chinese', 'Japanese', 'German', 'Russian', 'French'];
     const langOptions = languages.map(l => `<option value="${l}">${l}</option>`).join('');
 
-    // 스타일 옵션
     const styleOptions = Object.entries(STYLE_PRESETS)
         .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
 
@@ -39,19 +36,17 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         <div id="cat-drawer-header" class="inline-drawer-header interactable" tabindex="0">
             <div class="inline-drawer-title">
                 <span class="cat-theme-emoji">🐱</span>
-                <span>트랜스레이터 v18.0.0</span>
+                <span>트랜스레이터 Beta v18.1.0</span>
             </div>
             <i id="cat-drawer-toggle" class="inline-drawer-toggle fa-solid fa-chevron-down"></i>
         </div>
         <div id="cat-drawer-content" class="inline-drawer-content" style="display:none; padding:10px;">
 
-            <!-- 연결 프로필 -->
             <div class="cat-setting-row">
                 <label>연결 프로필</label>
                 <select id="ct-profile" class="text_pole">${profileOptions}</select>
             </div>
 
-            <!-- 직접 연결 모드 전용 -->
             <div id="ct-direct-settings" style="display:${settings.profile === '' ? 'block' : 'none'};">
                 <div class="cat-setting-row" style="position:relative;">
                     <label>API Key</label>
@@ -75,9 +70,8 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
                 </div>
             </div>
 
-            <!-- 공통 설정 -->
             <div class="cat-setting-row">
-                <label>자동 모드</label>
+                <label>자동 모드 (입출력 자동 언어 감지 적용됨)</label>
                 <select id="ct-auto-mode" class="text_pole">
                     <option value="none">꺼짐</option>
                     <option value="input">입력만</option>
@@ -90,7 +84,6 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
                 <select id="ct-lang" class="text_pole">${langOptions}</select>
             </div>
 
-            <!-- 스타일 + 온도 (같은 줄) -->
             <div style="display:flex; gap:8px;">
                 <div class="cat-setting-row" style="flex:1;">
                     <label>스타일</label>
@@ -113,7 +106,6 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
                 </div>
             </div>
 
-            <!-- 프롬프트 영역 -->
             <div class="cat-setting-row">
                 <label>시스템 보호막 (🔒 고정)</label>
                 <textarea id="ct-shield" class="text_pole cat-readonly-area" rows="3" readonly>${SYSTEM_SHIELD}</textarea>
@@ -123,51 +115,44 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
                 <textarea id="ct-user-prompt" class="text_pole" rows="3" placeholder="번역 스타일, 상황극 설정 등 자유롭게 입력">${settings.userPrompt || ''}</textarea>
             </div>
 
-            <!-- 사전 -->
             <div class="cat-setting-row">
-                <label>사전 (원문 = 번역어) <span id="ct-dict-reset" style="float:right; cursor:pointer; font-size:0.85em; opacity:0.7;" title="사전 초기화">🗑️ 초기화</span></label>
+                <label>사전 (원문 = 번역어) 
+                    <button id="ct-dict-reset" class="menu_button" style="float:right; cursor:pointer; font-size:0.9em; background:rgba(231,76,60,0.15)!important; border:1px solid #e74c3c!important; color:#e74c3c!important; padding:4px 10px; border-radius:6px; font-weight:bold;">🗑️ 사전 초기화</button>
+                </label>
                 <textarea id="ct-dictionary" class="text_pole" rows="3" placeholder="Ghost=고스트&#10;Soap=소프">${settings.dictionary || ''}</textarea>
             </div>
 
-            <!-- 캐시 통계 -->
             <div id="ct-cache-stats" class="cat-stats-bar">
                 캐시 히트율: ${statsData.hitRate}% | 절약 토큰: ~${statsData.tokensSaved.toLocaleString()}
             </div>
             <button id="ct-clear-cache" class="menu_button cat-btn-secondary" style="margin-top:4px; width:100%;">🗑️ 캐시 전체 삭제</button>
 
-            <!-- 백업 -->
             <div style="display:flex; gap:8px; margin-top:8px;">
                 <button id="ct-export" class="menu_button cat-btn-secondary" style="flex:1;">📤 내보내기</button>
                 <button id="ct-import-btn" class="menu_button cat-btn-secondary" style="flex:1;">📥 가져오기</button>
                 <input type="file" id="ct-import-file" accept=".json" style="display:none;">
             </div>
 
-            <!-- 저장 버튼 -->
             <button id="cat-save-btn" class="menu_button cat-save-button" style="margin-top:10px; width:100%;">
                 설정 저장 및 적용 <span class="cat-theme-emoji">🐱</span>
             </button>
-            <div class="cat-version-label">v18.0.0 "호랑이 각성"</div>
         </div>
     </div>`;
 
     $('#extensions_settings').append(html);
 
-    // ── 이벤트 바인딩 ──
-    // 드로어 토글
     $('#cat-drawer-header').on('click', (e) => {
         e.stopPropagation();
         $('#cat-drawer-content').slideToggle(200);
         $('#cat-drawer-toggle').toggleClass('fa-chevron-down fa-chevron-up');
     });
 
-    // API Key 보안 토글
     $('#ct-key-toggle').on('click', () => {
         const input = $('#ct-key');
         const isPassword = input.attr('type') === 'password';
         input.attr('type', isPassword ? 'text' : 'password');
     });
 
-    // 모델 선택 → 직접 입력 필드 토글 + 테마 전환
     $('#ct-model').val(settings.directModel).on('change', function () {
         const val = $(this).val();
         $('#ct-model-custom').toggle(val === 'custom');
@@ -179,11 +164,9 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         applyTheme(getModelTheme($(this).val()));
     });
 
-    // 프로필 변경 → 테마 자동 감지
     $('#ct-profile').val(settings.profile).on('change', function () {
         settings.profile = $(this).val();
         $('#ct-direct-settings').toggle(settings.profile === '');
-        // 프리셋 이름에서 pro/flash/프로/플래쉬 감지하여 테마 전환
         const profileName = $(this).find('option:selected').text().toLowerCase();
         if (profileName.includes('pro') || profileName.includes('프로')) {
             applyTheme('tiger');
@@ -194,7 +177,6 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         }
     });
 
-    // 스타일 → 온도 자동 설정
     $('#ct-style').val(settings.style || 'normal').on('change', function () {
         const preset = STYLE_PRESETS[$(this).val()];
         if (preset) {
@@ -202,16 +184,13 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         }
     });
 
-    // 기타 셀렉트 값 설정
     $('#ct-auto-mode').val(settings.autoMode);
     $('#ct-lang').val(settings.targetLang);
     $('#ct-temperature').val(settings.temperature || 0.3);
 
-    // 사전 즉시 동기화 (입력할 때마다 settings에 반영)
     $('#ct-dictionary').on('input', function () {
         settings.dictionary = $(this).val();
     });
-    // 사전 리셋
     $('#ct-dict-reset').on('click', async () => {
         $('#ct-dictionary').val('');
         settings.dictionary = '';
@@ -220,38 +199,32 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         updateCacheStats();
         catNotify(`${getThemeEmoji()} 사전 초기화 + 캐시 클리어 완료!`, "success");
     });
-    // 추가 지시사항도 즉시 동기화
     $('#ct-user-prompt').on('input', function () {
         settings.userPrompt = $(this).val();
     });
-    // 문맥 범위 0~3 강제 클램핑
     $('#ct-context-range').on('change', function () {
         let val = parseInt($(this).val()) || 0;
         val = Math.min(3, Math.max(0, val));
         $(this).val(val);
     });
 
-    // 저장
     $('#cat-save-btn').on('click', () => {
         saveSettingsFn();
         catNotify(`${getThemeEmoji()} 저장 완료! 테마가 동기화되었습니다.`, "success");
     });
 
-    // 캐시 삭제
     $('#ct-clear-cache').on('click', async () => {
         await clearAllCache();
         updateCacheStats();
         catNotify(`${getThemeEmoji()} 캐시 전체 삭제 완료!`, "success");
     });
 
-    // 설정 내보내기
     $('#ct-export').on('click', () => {
         saveSettingsFn();
         exportSettings(settings);
         catNotify(`${getThemeEmoji()} 설정 내보내기 완료!`, "success");
     });
 
-    // 설정 가져오기
     $('#ct-import-btn').on('click', () => $('#ct-import-file').click());
     $('#ct-import-file').on('change', async function () {
         const file = this.files[0];
@@ -267,11 +240,9 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         this.value = '';
     });
 
-    // 초기 테마 적용
     applyTheme(getModelTheme(settings.directModel));
 }
 
-// ─── 설정 수집 ──────────────────────────────────────
 export function collectSettings() {
     const modelVal = $('#ct-model').val();
     return {
@@ -290,24 +261,18 @@ export function collectSettings() {
     };
 }
 
-// ─── 캐시 통계 UI 업데이트 ──────────────────────────
 export function updateCacheStats() {
     const s = getStats();
     $('#ct-cache-stats').text(`캐시 히트율: ${s.hitRate}% | 절약 토큰: ~${s.tokensSaved.toLocaleString()}`);
 }
 
-// ─── 테마 적용 (새로고침 없이 실시간 전환) ────────────
 let _lastAppliedTheme = null;
 export function applyTheme(theme) {
     document.body.setAttribute('data-cat-theme', theme);
     const emoji = theme === 'tiger' ? '🐯' : '🐱';
-    // 설정 패널 이모지
     $('.cat-theme-emoji').text(emoji);
-    // 메시지 버튼 이모지
     $('.cat-mes-trans-btn .cat-emoji-icon').text(emoji);
-    // 입력창 버튼 이모지
     $('#cat-input-btn .cat-emoji-icon').text(emoji);
-    // 귀여운 알림 (최초 로드가 아닐 때만)
     if (_lastAppliedTheme !== null && _lastAppliedTheme !== theme) {
         if (theme === 'tiger') {
             catNotify('🐯 어흥! 호랑이 모드 활성화!', 'success');
@@ -318,10 +283,8 @@ export function applyTheme(theme) {
     _lastAppliedTheme = theme;
 }
 
-// ─── 입력창 버튼 주입 ───────────────────────────────
 export function injectInputButtons(settings, stContext, processMessageFn) {
     if ($('#cat-input-wrap').length > 0) {
-        // 이미 존재하면 발광 상태만 업데이트
         const icon = $('#cat-input-btn .cat-emoji-icon');
         if (isTranslatingInput) icon.addClass('cat-glow-anim');
         else icon.removeClass('cat-glow-anim');
@@ -332,21 +295,14 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
     if (target.length === 0) return;
 
     const emoji = getThemeEmoji();
-
-    // 버튼들을 가로 flex 컨테이너로 감싸기
     const btnWrap = $(`<div id="cat-input-wrap"></div>`);
-
-    // 번역 버튼
     const transBtn = $(`<div id="cat-input-btn" title="번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">${emoji}</span></div>`);
-    // 되돌리기 버튼
     const revertBtn = $(`<div id="cat-input-revert" title="되돌리기" class="cat-input-icon interactable"><i class="fa-solid fa-rotate-left"></i></div>`);
-    // 전체 번역 버튼
     const bulkBtn = $(`<div id="cat-bulk-btn" title="전체 번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">⚡</span></div>`);
 
     btnWrap.append(transBtn).append(revertBtn).append(bulkBtn);
     target.before(btnWrap);
 
-    // 번역 클릭
     transBtn.on('click', async (e) => {
         e.preventDefault();
         const sendArea = $('#send_textarea');
@@ -363,7 +319,7 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
 
             const isRetry = (lastTranslated && currentText === lastTranslated);
             const textToTranslate = isRetry ? originalText : currentText;
-            const forceLang = isRetry ? lastTargetLang : null;
+            const forceLang = null; // 🚨 마스터 요청: 하드코딩 해제 (입력창도 언어 자동 감지)
             const prevTrans = isRetry ? currentText : null;
 
             catNotify(isRetry ? `${getThemeEmoji()} 입력창 재번역 중...` : `${getThemeEmoji()} 스마트 번역 중...`, "success");
@@ -390,7 +346,6 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
         }
     });
 
-    // 되돌리기 클릭
     revertBtn.on('click', (e) => {
         e.preventDefault();
         const sendArea = $('#send_textarea');
@@ -402,7 +357,6 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
         }
     });
 
-    // 전체 번역 팝업
     bulkBtn.on('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -410,7 +364,7 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
     });
 }
 
-// ─── 메시지별 버튼 주입 ─────────────────────────────
+// 🚨 마스터 요청: 시스템 메시지(상태창, 노트 등)에도 번역 버튼 주입!
 export function injectMessageButtons(processMessageFn, revertMessageFn) {
     $('.mes:not(:has(.cat-btn-group))').each(function () {
         const msgId = $(this).attr('mesid');
@@ -423,10 +377,17 @@ export function injectMessageButtons(processMessageFn, revertMessageFn) {
                 <span class="cat-mes-revert-btn interactable" title="복구" data-mesid="${msgId}"><i class="fa-solid fa-rotate-left"></i></span>
             </div>`);
 
-        $(this).find('.name_text').append(group);
+        let target = $(this).find('.name_text');
+        if (target.length > 0) {
+            target.append(group);
+        } else {
+            // 이름이 없는 시스템 메시지(검은 박스 등)를 위한 비상 위치 지정
+            let sysWrap = $('<div style="text-align:right; margin-bottom:4px;"></div>');
+            sysWrap.append(group);
+            $(this).find('.mes_text').first().prepend(sysWrap);
+        }
     });
 
-    // 이벤트 위임: 부모에서 한 번만 등록 (DOM 교체에 안전)
     if (!window._catMesBtnDelegated) {
         window._catMesBtnDelegated = true;
         $(document).on('click', '.cat-mes-trans-btn', function (e) {
@@ -443,10 +404,8 @@ export function injectMessageButtons(processMessageFn, revertMessageFn) {
     }
 }
 
-// ─── 벌크 번역 팝업 ────────────────────────────────
 function showBulkPopup(event, settings, stContext, processMessageFn) {
     $('.cat-bulk-popup').remove();
-
     const popup = $(`
         <div class="cat-bulk-popup">
             <div class="cat-bulk-option" data-count="all">전체</div>
@@ -455,7 +414,6 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
             <div class="cat-bulk-option" data-count="50">최근 50</div>
         </div>
     `);
-
     const btn = $('#cat-bulk-btn');
     const rect = btn[0].getBoundingClientRect();
     popup.css({
@@ -464,7 +422,6 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
         right: (window.innerWidth - rect.right) + 'px',
         zIndex: 99999
     });
-
     $('body').append(popup);
 
     popup.find('.cat-bulk-option').on('click', async function () {
@@ -473,13 +430,9 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
         await executeBulkTranslation(count, settings, stContext, processMessageFn);
     });
 
-    // 외부 클릭으로 닫기
-    setTimeout(() => {
-        $(document).one('click', () => popup.remove());
-    }, 50);
+    setTimeout(() => { $(document).one('click', () => popup.remove()); }, 50);
 }
 
-// ─── 벌크 번역 실행 ────────────────────────────────
 async function executeBulkTranslation(count, settings, stContext, processMessageFn) {
     const allMes = $('.mes');
     let targets = [];
@@ -492,7 +445,6 @@ async function executeBulkTranslation(count, settings, stContext, processMessage
         allMes.slice(start).each(function () { targets.push($(this)); });
     }
 
-    // 이미 번역된 메시지 스킵
     targets = targets.filter(el => {
         const msgId = parseInt(el.attr('mesid'), 10);
         const msg = stContext.chat[msgId];
@@ -508,20 +460,11 @@ async function executeBulkTranslation(count, settings, stContext, processMessage
     const total = targets.length;
     let completed = 0;
 
-    // 벌크 아이콘 변경
     $('#cat-bulk-btn').html('<span class="cat-emoji-icon" style="filter:grayscale(1);">⚡</span>');
-    const abortHandler = () => {
-        if (bulkAbortController) bulkAbortController.abort();
-    };
-    $('#cat-bulk-btn').off('click').on('click', (e) => {
-        e.preventDefault();
-        abortHandler();
-    });
+    const abortHandler = () => { if (bulkAbortController) bulkAbortController.abort(); };
+    $('#cat-bulk-btn').off('click').on('click', (e) => { e.preventDefault(); abortHandler(); });
 
-    const progressEl = catNotifyProgress(
-        `${getThemeEmoji()} 벌크 번역 중... (0/${total}) [클릭시 중단]`,
-        abortHandler
-    );
+    const progressEl = catNotifyProgress(`${getThemeEmoji()} 벌크 번역 중... (0/${total}) [클릭시 중단]`, abortHandler);
 
     for (const el of targets) {
         if (bulkAbortController.signal.aborted) break;
@@ -531,42 +474,30 @@ async function executeBulkTranslation(count, settings, stContext, processMessage
         await processMessageFn(msgId, isUser, bulkAbortController.signal, true);
 
         completed++;
-        if (progressEl.length) {
-            progressEl.text(`${getThemeEmoji()} 벌크 번역 중... (${completed}/${total}) [클릭시 중단]`);
-        }
+        if (progressEl.length) progressEl.text(`${getThemeEmoji()} 벌크 번역 중... (${completed}/${total}) [클릭시 중단]`);
 
-        // Rate Limit 방어: 0.7초 딜레이
-        if (!bulkAbortController.signal.aborted) {
-            await new Promise(r => setTimeout(r, 700));
-        }
+        if (!bulkAbortController.signal.aborted) await new Promise(r => setTimeout(r, 700));
     }
 
-    // 복원
     progressEl.remove();
     const emoji = getThemeEmoji();
     $('#cat-bulk-btn').html('<span class="cat-emoji-icon">⚡</span>');
     $('#cat-bulk-btn').off('click').on('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showBulkPopup(e, settings, stContext, processMessageFn);
+        e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn);
     });
 
-    if (bulkAbortController.signal.aborted) {
-        catNotify(`🔴 번역 중단됨 (${completed}개 완료)`, "error");
-    } else {
-        catNotify(`${emoji} 벌크 번역 완료! (${completed}개)`, "success");
-    }
+    if (bulkAbortController.signal.aborted) catNotify(`🔴 번역 중단됨 (${completed}개 완료)`, "error");
+    else catNotify(`${emoji} 벌크 번역 완료! (${completed}개)`, "success");
+    
     bulkAbortController = null;
 }
 
-// ─── 번역 히스토리 팝업 ─────────────────────────────
 export async function showHistoryPopup(originalText, targetLang, anchorEl, onSelect) {
     $('.cat-history-popup').remove();
     const history = await getHistory(originalText, targetLang);
 
-    if (history.length < 3) return false; // 3회 이상 재번역 시 팝업
+    if (history.length < 3) return false;
 
-    // 핀된 항목 상단, 최대 5개
     const sorted = [...history].sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -587,22 +518,15 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
 
     const popup = $(`<div class="cat-history-popup">${items}</div>`);
     const rect = anchorEl[0].getBoundingClientRect();
-    popup.css({
-        position: 'fixed',
-        top: (rect.bottom + 4) + 'px',
-        left: rect.left + 'px',
-        zIndex: 99999
-    });
+    popup.css({ position: 'fixed', top: (rect.bottom + 4) + 'px', left: rect.left + 'px', zIndex: 99999 });
     $('body').append(popup);
 
-    // 번역 선택
     popup.find('.cat-history-text').on('click', function () {
         const text = decodeURIComponent($(this).data('text'));
         onSelect(text, false);
         popup.remove();
     });
 
-    // 핀 토글
     popup.find('.cat-history-pin').on('click', async function (e) {
         e.stopPropagation();
         const text = decodeURIComponent($(this).data('text'));
@@ -611,7 +535,6 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
         showHistoryPopup(originalText, targetLang, anchorEl, onSelect);
     });
 
-    // 새로 번역 (중복 클릭 방지)
     let newTransBusy = false;
     popup.find('.cat-history-new').on('click', () => {
         if (newTransBusy) return;
@@ -620,30 +543,21 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
         popup.remove();
     });
 
-    // 외부 클릭 닫기
-    setTimeout(() => {
-        $(document).one('click', () => popup.remove());
-    }, 50);
-
+    setTimeout(() => { $(document).one('click', () => popup.remove()); }, 50);
     return true;
 }
 
-// ─── 드래그 사전 등록 시스템 ────────────────────────
 export function setupDragDictionary(settings, saveSettingsFn) {
     let pawIcon = null;
-
-    // 채팅 영역에서 텍스트 선택 감지 (selectionchange + mouseup 병행)
     let _dragDebounce = null;
     const handleSelection = () => {
         clearTimeout(_dragDebounce);
         _dragDebounce = setTimeout(() => {
             const selection = window.getSelection();
             const selectedText = selection?.toString()?.trim();
-
             $('.cat-drag-paw').remove();
 
             if (!selectedText || selectedText.length === 0 || selectedText.length > 100) return;
-
             const anchorNode = selection.anchorNode;
             if (!anchorNode || !$(anchorNode).closest('#chat').length) return;
 
@@ -675,8 +589,6 @@ export function setupDragDictionary(settings, saveSettingsFn) {
 
     document.addEventListener('selectionchange', handleSelection);
     $(document).on('mouseup touchend', '#chat', handleSelection);
-
-    // 다른 곳 클릭하면 제거
     $(document).on('mousedown', (e) => {
         if (!$(e.target).closest('.cat-drag-paw, .cat-drag-popup').length) {
             $('.cat-drag-paw, .cat-drag-popup').remove();
@@ -686,7 +598,6 @@ export function setupDragDictionary(settings, saveSettingsFn) {
 
 function showDragDictPopup(selectedText, rect, settings, saveSettingsFn) {
     $('.cat-drag-popup').remove();
-
     const popup = $(`
         <div class="cat-drag-popup">
             <div class="cat-drag-header">"${selectedText.length > 20 ? selectedText.substring(0, 20) + '...' : selectedText}" →</div>
@@ -698,31 +609,16 @@ function showDragDictPopup(selectedText, rect, settings, saveSettingsFn) {
         </div>
     `);
 
-    // 모바일: 키보드에 가려지지 않도록 화면 상단 고정
     const isMobile = window.innerWidth < 768;
     if (isMobile) {
-        popup.css({
-            position: 'fixed',
-            top: '60px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 99999,
-            width: 'calc(100vw - 32px)',
-            maxWidth: '320px'
-        });
+        popup.css({ position: 'fixed', top: '60px', left: '50%', transform: 'translateX(-50%)', zIndex: 99999, width: 'calc(100vw - 32px)', maxWidth: '320px' });
     } else {
-        popup.css({
-            position: 'fixed',
-            top: (rect.bottom + 8) + 'px',
-            left: Math.max(8, rect.left - 20) + 'px',
-            zIndex: 99999
-        });
+        popup.css({ position: 'fixed', top: (rect.bottom + 8) + 'px', left: Math.max(8, rect.left - 20) + 'px', zIndex: 99999 });
     }
 
     $('body').append(popup);
     popup.find('.cat-drag-input').focus();
 
-    // 등록
     const doRegister = () => {
         const transWord = popup.find('.cat-drag-input').val().trim();
         if (!transWord) return;
@@ -743,11 +639,9 @@ function showDragDictPopup(selectedText, rect, settings, saveSettingsFn) {
     popup.find('.cat-drag-cancel').on('click', () => popup.remove());
 }
 
-// ─── MutationObserver 셋업 ──────────────────────────
 export function setupMutationObserver(processMessageFn, revertMessageFn, settings, stContext) {
     const chatContainer = document.getElementById('chat');
     if (!chatContainer) {
-        // chat 아직 없으면 재시도
         setTimeout(() => setupMutationObserver(processMessageFn, revertMessageFn, settings, stContext), 500);
         return;
     }
@@ -768,10 +662,7 @@ export function setupMutationObserver(processMessageFn, revertMessageFn, setting
 
     observer.observe(chatContainer, { childList: true, subtree: true });
 
-    // 초기 주입
     injectMessageButtons(processMessageFn, revertMessageFn);
     injectInputButtons(settings, stContext, processMessageFn);
-
-    // 입력 버튼은 MO가 놓칠 수 있으니 느린 폴링으로 보조
     setInterval(() => injectInputButtons(settings, stContext, processMessageFn), 2000);
 }
