@@ -1,8 +1,8 @@
 {
-    "name": "cat-translator-beta",
-    "display_name": "🐱트랜스레이터 (Beta) - 커뮤니티 스타",
-    "version": "18.7.0-beta",
-    "description": "전체 번역, 중단, 삭제, 발바닥 키보기, 모바일 감시 엔진 탑재",
+    "name": "cat-translator-pro",
+    "display_name": "🐱트랜스레이터 Pro (v18.0.0)",
+    "version": "18.0.0",
+    "description": "한-영 자동 감지, 영구 캐시(IndexedDB), 드래그 사전 등록, UI 패턴 보호막 탑재",
     "author": "냥헴 & GPT",
     "js": "index.js",
     "css": "style.css"
