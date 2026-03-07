@@ -1,4 +1,5 @@
-import { extension_settings, getContext } from '../../../../scripts/extensions.js';
+import { extension_settings, getContext } from '../../../extensions.js';
+import { secret_state, SECRET_KEYS } from '../../../secrets.js';
 
 const extName = "cat-translator-beta";
 const stContext = getContext();
