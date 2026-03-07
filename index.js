@@ -380,8 +380,15 @@ function setupUI() {
     $('#cat-save-btn').on('click', () => { saveSettings(); catNotify("저장 완료! 테마가 동기화되었습니다."); });
 }
 
+// 🚀 화면이 전부 그려진 다음에 안전하게 옵저버 실행!
 jQuery(() => {
     setupUI();
-    setInterval(injectButtons, 1000); // 1초마다 보험용 주입 확인
+    setInterval(injectButtons, 1000); 
+    
+    // 채팅창이 존재하는지 확인 후 감시 시작
+    const chatBox = document.getElementById('chat');
+    if (chatBox) {
+        const observer = new MutationObserver(() => injectButtons());
+        observer.observe(chatBox, { childList: true, subtree: true });
+    }
 });
-
