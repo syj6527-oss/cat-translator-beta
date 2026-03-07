@@ -16,7 +16,6 @@ export function getCompletionEmoji() {
 // 🚨 토스트 속도 제어: 부드러운 전환 및 유지 시간(3.5초) 증가!
 export function catNotify(message, type = 'success') {
     const existing = $('.cat-notification');
-    // 기존 창이 있으면 강제 삭제가 아니라 부드럽게 숨김 처리 후 교체
     if (existing.length > 0) {
         existing.removeClass('show');
         setTimeout(() => existing.remove(), 300); 
@@ -35,7 +34,6 @@ export function catNotify(message, type = 'success') {
     
     $('body').append(notifyHtml);
     
-    // 약간의 딜레이를 줘서 애니메이션이 씹히는 현상 방지
     setTimeout(() => {
         requestAnimationFrame(() => notifyHtml.addClass('show'));
     }, 50);
@@ -44,7 +42,7 @@ export function catNotify(message, type = 'success') {
         setTimeout(() => {
             notifyHtml.removeClass('show');
             setTimeout(() => notifyHtml.remove(), 400);
-        }, 3500); // 2.5초 -> 3.5초로 넉넉하게 연장!
+        }, 3500);
     }
     return notifyHtml;
 }
@@ -112,45 +110,6 @@ export function applyPreReplaceWithCount(text, dictionary, isToEnglish) {
     if (lines.length === 0) return { swapped: text, matchCount: 0 };
 
     let result = text;
-    let matchCount = 0;
-    lines.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length);
-
-    lines.forEach(line => {
-        const parts = line.split('=');
-        if (parts.length >= 2) {
-            const orig = parts[0].trim();
-            const trans = parts.slice(1).join('=').trim();
-            const searchStr = isToEnglish ? trans : orig;
-            const replaceStr = isToEnglish ? orig : trans;
-            if (searchStr && replaceStr) {
-                const escaped = searchStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escaped, 'gi');
-                const matches = result.match(regex);
-                if (matches) {
-                    matchCount += matches.length;
-                    result = result.replace(regex, replaceStr);
-                }
-            }
-        }
-    });
-    return { swapped: result, matchCount };
-}
-
-export function normalizeText(text) {
-    if (!text) return "";
-    return text.toLowerCase().replace(/[^a-z가-힣0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g, '').trim();
-}
-
-export function setTextareaValue(el, value) {
-    const nativeSetter = Object.getOwnPropertyDescriptor(
-        window.HTMLTextAreaElement.prototype, "value"
-    )?.set;
-    if (nativeSetter) nativeSetter.call(el, value);
-    else el.value = value;
-    $(el).val(value);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-}
     let matchCount = 0;
     lines.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length);
 
