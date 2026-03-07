@@ -1,8 +1,6 @@
 /* ============================================================
-   🐱 Cat Translator v18.1.0 "호랑이 각성" - style.css
-   테마 변수 + ST 네이티브 동기화 + 알약 토스트
+   🐱 Cat Translator v18.2.0 "호랑이 마개조 V2" - style.css
    ============================================================ */
-
 [data-cat-theme="cat"], body:not([data-cat-theme]) {
     --ca-glow: rgba(255, 165, 0, 0.6);
     --ca-glow-strong: rgba(255, 165, 0, 0.9);
@@ -10,7 +8,6 @@
     --ca-bg: rgba(255, 165, 0, 0.08);
     --ca-border: rgba(255, 165, 0, 0.3);
 }
-
 [data-cat-theme="tiger"] {
     --ca-glow: rgba(255, 215, 0, 0.7);
     --ca-glow-strong: rgba(255, 215, 0, 1);
@@ -18,14 +15,8 @@
     --ca-bg: rgba(255, 215, 0, 0.08);
     --ca-border: rgba(255, 215, 0, 0.3);
 }
-
 #cat-trans-container { font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); }
-
-#cat-drawer-header {
-    display: flex !important; align-items: center !important; justify-content: space-between !important;
-    cursor: pointer !important; padding: 0.5em 0.8em !important; min-height: 3em !important;
-}
-
+#cat-drawer-header { display: flex !important; align-items: center !important; justify-content: space-between !important; cursor: pointer !important; padding: 0.5em 0.8em !important; min-height: 3em !important; }
 #cat-drawer-header .inline-drawer-title { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 1.05em; font-weight: 600; color: var(--SmartThemeBodyColor, #000); }
 #cat-drawer-toggle { transition: transform 0.2s ease-in-out; opacity: 0.7; }
 .cat-setting-row { margin-bottom: 8px; }
@@ -35,10 +26,10 @@
 .cat-save-button { background: var(--ca-bg) !important; border: 1px solid var(--ca-accent) !important; color: var(--SmartThemeBodyColor, #000) !important; font-weight: bold; border-radius: 8px; padding: 10px; }
 .cat-save-button:hover { background: var(--ca-border) !important; }
 .cat-btn-secondary { font-size: 0.85em; padding: 6px 10px; border-radius: 6px; }
-.cat-version-label { font-size: 0.7em; opacity: 0.4; text-align: center; margin-top: 5px; color: var(--SmartThemeBodyColor, #000); }
 
-.cat-paw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(20%); cursor: pointer; font-size: 1.1em; z-index: 1; user-select: none; transition: transform 0.2s; }
-.cat-paw-toggle:hover { transform: translateY(20%) scale(1.2); }
+/* 🚨 마스터 튜닝: 발바닥 정중앙 영구 고정 */
+.cat-paw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.1em; z-index: 1; user-select: none; transition: transform 0.2s; }
+.cat-paw-toggle:hover { transform: translateY(-50%) scale(1.2); }
 
 .cat-emoji-icon { display: inline-block; line-height: 1; transition: all 0.2s; will-change: transform, filter; transform: translateZ(0); -webkit-backface-visibility: hidden; }
 .cat-glow-anim { animation: cat-glow-pulse 1.2s infinite alternate ease-in-out !important; border-radius: 50%; }
@@ -48,21 +39,14 @@
     100% { transform: scale(1.2) translateZ(0); filter: drop-shadow(0 0 12px var(--ca-glow-strong)); background-color: var(--ca-bg); }
 }
 
-/* ============================================================
-   🚨 마스터 요청: 이름 옆 및 시스템 메시지 버튼 여백/캡슐 디자인 적용
-   ============================================================ */
-.name_text { 
-    gap: 10px !important; 
-    flex-wrap: wrap !important; 
-}
-
+/* 🚨 마스터 튜닝: 이름 옆 알약 배경 완전 삭제 (투명화) */
+.name_text { gap: 10px !important; flex-wrap: wrap !important; }
 .cat-btn-group {
     display: inline-flex !important;
     gap: 10px !important;
     margin-left: 10px !important;
-    background-color: var(--SmartThemeBlurTintColor, rgba(0,0,0,0.2)) !important;
-    padding: 4px 10px !important;
-    border-radius: 15px !important;
+    background-color: transparent !important; /* 배경 날림! */
+    padding: 0 !important; /* 여백 날림! */
     align-items: center !important;
     vertical-align: middle !important;
 }
@@ -71,9 +55,7 @@
 .cat-mes-trans-btn:hover, .cat-mes-revert-btn:hover { opacity: 1; transform: scale(1.15); }
 .cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
 
-/* ============================================================
-   🚨 마스터 요청: 하단 입력창 고양이 버튼 글씨 침범 파고듬 방어벽!
-   ============================================================ */
+/* 🚨 마스터 튜닝: 하단 버튼 뒤로 글씨 안 비치게 강력한 가림막 캡슐 씌움 */
 .cat-input-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2em !important; margin: 0 !important; padding: 2px 3px; border-radius: 4px; transition: background 0.2s, transform 0.2s; flex-shrink: 0; vertical-align: middle; }
 .cat-input-icon:hover { background: var(--ca-bg); transform: scale(1.1); }
 .cat-input-icon i { color: var(--ca-accent); font-size: 0.9em; }
@@ -84,10 +66,10 @@
     gap: 12px !important;
     margin: 0 10px 0 5px !important;
     padding: 6px 12px !important;
-    background-color: var(--SmartThemeBlurTintColor, rgba(0,0,0,0.5)) !important;
+    background-color: var(--SmartThemeBlurTintColor, #2a2a2a) !important; /* 단단한 방패! */
     border-radius: 20px !important;
     z-index: 100;
-    backdrop-filter: blur(5px);
+    box-shadow: -10px 0 15px var(--SmartThemeBlurTintColor, #2a2a2a); /* 부드러운 그라데이션 방어막 */
 }
 
 .cat-notification { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 30px; color: white; font-weight: bold; font-size: 13px; z-index: 2147483647 !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; white-space: nowrap; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; text-align: center; font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); backdrop-filter: blur(8px); }
