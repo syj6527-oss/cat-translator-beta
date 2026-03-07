@@ -18,7 +18,7 @@ import {
 import { STYLE_PRESETS } from './translator.js';
 
 // ── 상수 ──────────────────────────────────────
-const extName   = "cat-translator";
+const extName = "cat-translator-beta";
 const stContext = getContext();
 
 // ── 전역 상태 ──────────────────────────────────
