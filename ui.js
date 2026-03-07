@@ -147,16 +147,13 @@ export function applyTheme(theme) {
 }
 
 export function injectInputButtons(settings, stContext, processMessageFn) {
-    if ($('#cat-input-wrap').length > 0) { const icon = $('#cat-input-btn .cat-emoji-icon'); if (isTranslatingInput) icon.addClass('cat-glow-anim'); else icon.removeClass('cat-glow-anim'); return; }
+    if ($('#cat-input-btn').length > 0) { const icon = $('#cat-input-btn .cat-emoji-icon'); if (isTranslatingInput) icon.addClass('cat-glow-anim'); else icon.removeClass('cat-glow-anim'); return; }
     const target = $('#send_but'); if (target.length === 0) return;
     const emoji = getThemeEmoji();
-    const btnWrap = $(`<div id="cat-input-wrap"></div>`);
-    // 캡슐 컨테이너 클릭이 ST 전송 버튼으로 전파되지 않도록 차단
-    btnWrap.on('click', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); });
     const transBtn = $(`<div id="cat-input-btn" title="번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">${emoji}</span></div>`);
     const revertBtn = $(`<div id="cat-input-revert" title="되돌리기" class="cat-input-icon interactable"><i class="fa-solid fa-rotate-left"></i></div>`);
     const bulkBtn = $(`<div id="cat-bulk-btn" title="전체 번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">⚡</span></div>`);
-    btnWrap.append(transBtn).append(revertBtn).append(bulkBtn); target.before(btnWrap);
+    target.before(transBtn).before(revertBtn).before(bulkBtn);
 
     transBtn.on('click', async (e) => {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
