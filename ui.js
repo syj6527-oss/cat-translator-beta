@@ -151,13 +151,16 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
     const target = $('#send_but'); if (target.length === 0) return;
     const emoji = getThemeEmoji();
     const btnWrap = $(`<div id="cat-input-wrap"></div>`);
+    // 캡슐 컨테이너 클릭이 ST 전송 버튼으로 전파되지 않도록 차단
+    btnWrap.on('click', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); });
     const transBtn = $(`<div id="cat-input-btn" title="번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">${emoji}</span></div>`);
     const revertBtn = $(`<div id="cat-input-revert" title="되돌리기" class="cat-input-icon interactable"><i class="fa-solid fa-rotate-left"></i></div>`);
     const bulkBtn = $(`<div id="cat-bulk-btn" title="전체 번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">⚡</span></div>`);
     btnWrap.append(transBtn).append(revertBtn).append(bulkBtn); target.before(btnWrap);
 
     transBtn.on('click', async (e) => {
-        e.preventDefault(); const sendArea = $('#send_textarea'); const currentText = sendArea.val().trim();
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        const sendArea = $('#send_textarea'); const currentText = sendArea.val().trim();
         if (isTranslatingInput || !currentText) return;
         isTranslatingInput = true; transBtn.find('.cat-emoji-icon').addClass('cat-glow-anim');
         try {
@@ -177,8 +180,8 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
             }
         } finally { isTranslatingInput = false; transBtn.find('.cat-emoji-icon').removeClass('cat-glow-anim'); }
     });
-    revertBtn.on('click', (e) => { e.preventDefault(); const sendArea = $('#send_textarea'); const originalText = sendArea.data('cat-original-text'); if (originalText) { setTextareaValue(sendArea[0], originalText); sendArea.removeData('cat-original-text').removeData('cat-last-translated'); catNotify(`${getThemeEmoji()} 원문 복구 완료!`, "success"); } });
-    bulkBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
+    revertBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); const sendArea = $('#send_textarea'); const originalText = sendArea.data('cat-original-text'); if (originalText) { setTextareaValue(sendArea[0], originalText); sendArea.removeData('cat-original-text').removeData('cat-last-translated'); catNotify(`${getThemeEmoji()} 원문 복구 완료!`, "success"); } });
+    bulkBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
 }
 
 export function injectMessageButtons(processMessageFn, revertMessageFn) {

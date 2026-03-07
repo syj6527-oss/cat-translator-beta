@@ -56,20 +56,22 @@
 .cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
 
 /* 🚨 마스터 튜닝: 하단 버튼 뒤로 글씨 안 비치게 강력한 가림막 캡슐 씌움 */
-.cat-input-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2em !important; margin: 0 !important; padding: 2px 3px; border-radius: 4px; transition: background 0.2s, transform 0.2s; flex-shrink: 0; vertical-align: middle; }
+.cat-input-icon { cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 !important; padding: 0 !important; border-radius: 4px; transition: background 0.2s, transform 0.2s; flex-shrink: 0; border: none !important; outline: none !important; box-shadow: none !important; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 .cat-input-icon:hover { background: var(--ca-bg); transform: scale(1.1); }
 .cat-input-icon i { color: var(--ca-accent); font-size: 0.9em; }
+.cat-input-icon .cat-emoji-icon { font-size: 1.2em; pointer-events: none; }
 
 #cat-input-wrap {
-    display: inline-flex !important;
+    display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
-    margin: 0 8px !important;
-    padding: 6px 12px !important;
-    background-color: var(--SmartThemeBlurTintColor, #2a2a2a) !important;
-    border-radius: 20px !important;
+    gap: 4px !important;
+    margin-right: 8px !important;
+    padding: 2px 6px !important;
+    background-color: var(--SmartThemeBlurTintColor, rgba(0,0,0,0.3)) !important;
+    border-radius: 16px !important;
     z-index: 100;
     flex-shrink: 0 !important;
+    pointer-events: auto !important;
 }
 
 .cat-notification { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 30px; color: white; font-weight: bold; font-size: 13px; z-index: 2147483647 !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; white-space: nowrap; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; text-align: center; font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); backdrop-filter: blur(8px); }
@@ -102,4 +104,7 @@
     .cat-notification { font-size: 12px; padding: 8px 16px; max-width: 90vw; }
     .cat-bulk-popup, .cat-history-popup, .cat-drag-popup { max-width: calc(100vw - 32px); }
     #cat-drawer-content [style*="display:flex"] { flex-wrap: nowrap !important; }
+    #cat-input-wrap { gap: 2px !important; padding: 2px 4px !important; margin-right: 4px !important; }
+    .cat-input-icon { width: 24px; height: 24px; }
+    .cat-input-icon .cat-emoji-icon { font-size: 1em; }
 }
