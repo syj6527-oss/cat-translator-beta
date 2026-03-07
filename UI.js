@@ -6,7 +6,7 @@
 import { extension_settings, getContext } from '../../../../scripts/extensions.js';
 import { CORE_DEFENSE, STYLE_PRESETS }    from './translator.js';
 
-const extName  = "cat-translator";
+const extName  = "cat-translator-beta";
 const stContext = getContext();
 
 // ── 🚨 팝업 알림 ──────────────────────────────
