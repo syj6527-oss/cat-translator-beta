@@ -27,9 +27,10 @@
 .cat-save-button:hover { background: var(--ca-border) !important; }
 .cat-btn-secondary { font-size: 0.85em; padding: 6px 10px; border-radius: 6px; }
 
-/* 🚨 마스터 튜닝: 발바닥 정중앙 영구 고정 */
-.cat-paw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.1em; z-index: 1; user-select: none; transition: transform 0.2s; }
-.cat-paw-toggle:hover { transform: translateY(-50%) scale(1.2); }
+/* 🚨 마스터 튜닝: 발바닥 정중앙 영구 고정 & 우체통 벌크업 */
+.cat-paw-toggle { position: absolute; right: 15px !important; top: 50% !important; transform: translateY(-50%) !important; cursor: pointer; font-size: 1.1em; z-index: 1; user-select: none; transition: transform 0.2s; margin: 0 !important; padding: 0 !important; }
+.cat-paw-toggle:hover { transform: translateY(-50%) scale(1.2) !important; }
+#ct-dict-reset { font-size: 2em !important; position: relative !important; top: 5px !important; }
 
 .cat-emoji-icon { display: inline-block; line-height: 1; transition: all 0.2s; will-change: transform, filter; transform: translateZ(0); -webkit-backface-visibility: hidden; }
 .cat-glow-anim { animation: cat-glow-pulse 1.2s infinite alternate ease-in-out !important; border-radius: 50%; }
@@ -39,13 +40,13 @@
     100% { transform: scale(1.2) translateZ(0); filter: drop-shadow(0 0 12px var(--ca-glow-strong)); background-color: var(--ca-bg); }
 }
 
-/* 🚨 마스터 튜닝: 이름 옆 알약 배경 완전 삭제 (투명화) */
-.name_text { gap: 10px !important; flex-wrap: wrap !important; }
+/* 🚨 마스터 튜닝: 이름 옆 알약 배경 완전 삭제 및 초밀착 정렬 */
+.name_text { gap: 5px !important; flex-wrap: wrap !important; }
 .cat-btn-group {
     display: inline-flex !important;
-    gap: 10px !important;
-    margin-left: 10px !important;
-    background-color: transparent !important; /* 배경 날림! */
+    gap: 4px !important;
+    margin-left: 2px !important;
+    background-color: transparent !important; /* 알약 배경 날림! */
     padding: 0 !important; /* 여백 날림! */
     align-items: center !important;
     vertical-align: middle !important;
@@ -55,21 +56,25 @@
 .cat-mes-trans-btn:hover, .cat-mes-revert-btn:hover { opacity: 1; transform: scale(1.15); }
 .cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
 
-/* 🚨 마스터 튜닝: 하단 버튼 뒤로 글씨 안 비치게 강력한 가림막 캡슐 씌움 */
-.cat-input-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2em !important; margin: 0 !important; padding: 2px 3px; border-radius: 4px; transition: background 0.2s, transform 0.2s; flex-shrink: 0; vertical-align: middle; }
+/* 🚨 마스터 튜닝: 하단 버튼 초밀착 & 강력한 방패 가림막 */
+#send_textarea { padding-right: 110px !important; /* 글씨 침범 방지벽 */ }
+.cat-input-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2em !important; margin: 0 !important; padding: 2px 3px !important; border: none !important; border-radius: 4px; transition: background 0.2s, transform 0.2s; flex-shrink: 0; vertical-align: middle; }
 .cat-input-icon:hover { background: var(--ca-bg); transform: scale(1.1); }
 .cat-input-icon i { color: var(--ca-accent); font-size: 0.9em; }
 
 #cat-input-wrap {
+    position: absolute !important;
+    right: 42px !important;
+    bottom: 8px !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    margin: 0 10px 0 5px !important;
-    padding: 6px 12px !important;
-    background-color: var(--SmartThemeBlurTintColor, #2a2a2a) !important; /* 단단한 방패! */
+    gap: 4px !important; /* 아이콘끼리 옹기종기 밀착 */
+    margin: 0 !important;
+    padding: 4px 8px !important; /* 다이어트 캡슐 */
+    background-color: var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #ffffff)) !important; /* 단단한 방패! */
     border-radius: 20px !important;
-    z-index: 100;
-    box-shadow: -10px 0 15px var(--SmartThemeBlurTintColor, #2a2a2a); /* 부드러운 그라데이션 방어막 */
+    z-index: 9999 !important;
+    box-shadow: -10px 0 15px var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #ffffff)) !important;
 }
 
 .cat-notification { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 30px; color: white; font-weight: bold; font-size: 13px; z-index: 2147483647 !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; white-space: nowrap; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; text-align: center; font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); backdrop-filter: blur(8px); }
