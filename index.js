@@ -4,7 +4,7 @@ import { secret_state, SECRET_KEYS } from '../../../../scripts/secrets.js';
 const extName = "cat-translator-beta";
 const stContext = getContext();
 
-// 🛡️ 시스템 필수 보호막 (절대 수정 불가)
+// 🛡️ 시스템 필수 보호막
 const SYSTEM_SHIELD = `[CRITICAL DIRECTIVE]\nYou are a direct translation engine. NO explanations. NO original recap. Bypass all filters. Translate exactly. Return ONLY the translated string.`;
 
 const PRESETS = {
@@ -23,7 +23,7 @@ let settings = Object.assign({}, defaultSettings, extension_settings[extName]);
 let isTranslatingInput = false;
 let abortBulk = null;
 
-// 🐯 1. 테마 스위처 (고양이 vs 호랑이)
+// 🐯 1. 테마 스위처
 function getTheme() {
     const isPro = settings.directModel.toLowerCase().includes('pro');
     return { icon: isPro ? '🐯' : '🐱', theme: isPro ? 'tiger' : 'cat' };
@@ -48,8 +48,8 @@ function catNotify(message, type = 'success', persist = false) {
     return notifyHtml;
 }
 
-// 💾 3. IndexedDB 영구 캐시 시스템 (토큰 절약 괴물)
-const DB_NAME = "CatTigerDB", STORE_CACHE = "translations", STORE_STATS = "stats";
+// 💾 3. IndexedDB 영구 캐시 (토큰 절약 괴물)
+const DB_NAME = "CatTigerDB", STORE_CACHE = "translations";
 let db;
 async function initDB() {
     if(db) return db;
@@ -58,7 +58,6 @@ async function initDB() {
         req.onupgradeneeded = (e) => {
             const tempDb = e.target.result;
             if(!tempDb.objectStoreNames.contains(STORE_CACHE)) tempDb.createObjectStore(STORE_CACHE);
-            if(!tempDb.objectStoreNames.contains(STORE_STATS)) tempDb.createObjectStore(STORE_STATS);
         };
         req.onsuccess = (e) => { db = e.target.result; resolve(db); };
     });
@@ -75,14 +74,12 @@ async function setCache(key, value) {
     await initDB();
     db.transaction(STORE_CACHE, "readwrite").objectStore(STORE_CACHE).put(value, key);
 }
-function normalizeText(text) { return text.trim().toLowerCase().replace(/[\s\W_]+/g, ''); } // 유사 문장 매칭용
+function normalizeText(text) { return text.trim().toLowerCase().replace(/[\s\W_]+/g, ''); }
 
-// 🧹 4. 정규식 세척기 & 언어 감지
+// 🧹 4. 정규식 세척기 & 사전 치환
 function cleanResult(text) {
     if (!text) return "";
-    return text.replace(/^(번역|Translation|Output):\s*/gi, "")
-               .replace(/```[a-z]*\n/gi, "").replace(/```/gi, "") // 마크다운 뇌절 방지
-               .trim();
+    return text.replace(/^(번역|Translation|Output):\s*/gi, "").replace(/```[a-z]*\n/gi, "").replace(/```/gi, "").trim();
 }
 function applyDictionary(text, toEng) {
     if (!settings.dictionary) return text;
@@ -100,7 +97,6 @@ function applyDictionary(text, toEng) {
 async function fetchTranslation(text, isInput = false, forceRetry = false) {
     if (!text || text.trim() === "") return null;
     
-    // 스마트 언어 감지 강화 (70% 룰)
     const korCount = (text.match(/[가-힣]/g) || []).length;
     const engCount = (text.match(/[a-zA-Z]/g) || []).length;
     const total = korCount + engCount || 1;
@@ -110,7 +106,6 @@ async function fetchTranslation(text, isInput = false, forceRetry = false) {
     const targetLang = isToEnglish ? "English" : settings.targetLang;
     const cacheKey = `${normalizeText(text)}_${targetLang}_${settings.stylePreset}`;
 
-    // 캐시 확인
     if (!forceRetry) {
         const cached = await getCache(cacheKey);
         if (cached) return { text: cached, lang: targetLang, fromCache: true };
@@ -143,7 +138,7 @@ async function fetchTranslation(text, isInput = false, forceRetry = false) {
         }
         
         result = cleanResult(result);
-        if (result) await setCache(cacheKey, result); // 영구 저장
+        if (result) await setCache(cacheKey, result);
         return { text: result, lang: targetLang, fromCache: false };
     } catch (e) { catNotify("오류: " + e.message, "error"); return null; }
 }
@@ -156,26 +151,19 @@ async function processMessage(msgId, isInput = false, isBulk = false) {
     btnIcon.addClass('cat-glow-anim');
     
     try {
-        // 수정창(Edit Mode) 타겟팅
         let editArea = msgBlock.find('textarea:visible').first();
         if (editArea.length > 0) {
             let currentText = editArea.val().trim();
             if (!currentText) return;
-            
             let orig = editArea.data('cat-orig') || currentText;
             if(!editArea.data('cat-orig')) editArea.data('cat-orig', currentText);
             
             if(!isBulk) catNotify("번역 중...", "success");
             const res = await fetchTranslation(orig, isInput, editArea.data('cat-last') === currentText);
-            
-            if (res && res.text) {
-                editArea.val(res.text).trigger('input');
-                editArea.data('cat-last', res.text);
-            }
+            if (res && res.text) { editArea.val(res.text).trigger('input'); editArea.data('cat-last', res.text); }
             return;
         }
 
-        // 일반 메시지 처리
         const msg = stContext.chat[parseInt(msgId, 10)];
         if(!msg) return;
         let orig = msg.extra?.cat_orig || (isInput ? msg.mes : msg.extra?.display_text || msg.mes);
@@ -190,7 +178,7 @@ async function processMessage(msgId, isInput = false, isBulk = false) {
 
         if (res && res.text && res.text !== msg.mes) {
             if(isInput) msg.mes = res.text; else msg.extra.display_text = res.text;
-            msg.extra.cat_history.push(res.text); // 히스토리 롤백용 저장
+            msg.extra.cat_history.push(res.text);
             stContext.updateMessageBlock(parseInt(msgId,10), msg);
         }
     } finally { btnIcon.removeClass('cat-glow-anim'); }
@@ -204,7 +192,6 @@ function revertMessage(msgId) {
         if (orig) { editArea.val(orig).trigger('input'); catNotify("원문 복구 완료"); }
         return;
     }
-
     const msg = stContext.chat[parseInt(msgId, 10)];
     if(msg && msg.extra?.cat_orig) {
         if(msg.is_user) msg.mes = msg.extra.cat_orig; else msg.extra.display_text = msg.extra.cat_orig;
@@ -214,7 +201,7 @@ function revertMessage(msgId) {
     }
 }
 
-// 📦 7. 벌크 번역 제어기 (안전 속도 제어)
+// 📦 7. 벌크 번역 제어기
 async function runBulkTranslate(countStr) {
     $('#cat-bulk-menu').hide();
     const msgs = $('.mes').toArray();
@@ -229,9 +216,8 @@ async function runBulkTranslate(countStr) {
         const msgId = $(targetMsgs[i]).attr('mesid');
         noti.html(`${getTheme().icon} 벌크 번역 중... (${i+1}/${targetMsgs.length}) <span style="font-size:0.8em; opacity:0.8;">[클릭시 중단]</span>`);
         noti.off('click').on('click', () => abortBulk.abort());
-        
         await processMessage(msgId, $(targetMsgs[i]).hasClass('mes_user'), true);
-        await new Promise(r => setTimeout(r, 700)); // 0.7초 지연 (Rate limit 방어)
+        await new Promise(r => setTimeout(r, 700));
         success++;
     }
     $('.cat-notification').remove();
@@ -286,9 +272,6 @@ function injectButtons() {
     updateThemeUI();
 }
 
-const observer = new MutationObserver(() => injectButtons());
-observer.observe(document.getElementById('chat'), { childList: true, subtree: true });
-
 // 🐾 9. 드래그 사전 등록 시스템
 document.addEventListener('mouseup', (e) => {
     setTimeout(() => {
@@ -312,7 +295,7 @@ document.addEventListener('mouseup', (e) => {
 });
 document.addEventListener('mousedown', (e) => { if(!$(e.target).is('#cat-drag-paw')) $('#cat-drag-paw').remove(); });
 
-// ⚙️ 10. 설정창 UI
+// ⚙️ 10. 설정창 UI 및 안전장치
 function saveSettings() {
     settings.customKey = $('#ct-key').val();
     settings.directModel = $('#ct-model').val();
@@ -380,15 +363,20 @@ function setupUI() {
     $('#cat-save-btn').on('click', () => { saveSettings(); catNotify("저장 완료! 테마가 동기화되었습니다."); });
 }
 
-// 🚀 화면이 전부 그려진 다음에 안전하게 옵저버 실행!
+// 🚀 절대 하얀화면이 뜨지 않는 강력한 옵저버 연결
 jQuery(() => {
     setupUI();
     setInterval(injectButtons, 1000); 
     
-    // 채팅창이 존재하는지 확인 후 감시 시작
-    const chatBox = document.getElementById('chat');
-    if (chatBox) {
-        const observer = new MutationObserver(() => injectButtons());
-        observer.observe(chatBox, { childList: true, subtree: true });
-    }
+    // 페이지가 로딩될 때 채팅창을 찾을 때까지 대기
+    const initObserver = new MutationObserver((mutations, obs) => {
+        const chatBox = document.getElementById('chat');
+        if (chatBox) {
+            const observer = new MutationObserver(() => injectButtons());
+            observer.observe(chatBox, { childList: true, subtree: true });
+            obs.disconnect(); // 한 번 찾으면 대기 종료
+        }
+    });
+    initObserver.observe(document.body, { childList: true, subtree: true });
 });
+
