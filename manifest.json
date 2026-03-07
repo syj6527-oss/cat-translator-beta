@@ -1,9 +1,13 @@
 {
-    "name": "cat-translator-pro",
-    "display_name": "🐱트랜스레이터 (v18.0.0 Ultimate)",
-    "version": "18.0.0",
-    "description": "프롬프트 2단 분리(스타일 자유 + 코어 고정), 스마트 리트라이, 영구 캐시",
-    "author": "냥헴 & GPT",
-    "js": "index.js",
-    "css": "style.css"
+    "display_name": "🐱 캣 트랜스레이터",
+    "version": "19.0.0",
+    "description": "실리태번용 AI 번역 확장 (Gemini API 연동)",
+    "author": "cat-translator",
+    "homePage": "",
+    "js": {
+        "main.js": 1
+    },
+    "css": {
+        "style.css": 1
+    }
 }
