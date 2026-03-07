@@ -8,6 +8,12 @@ export function getThemeEmoji() {
     return theme === 'tiger' ? '🐯' : '🐱';
 }
 
+// 번역 완료 보상 이모지 🐟/🍖
+export function getCompletionEmoji() {
+    const theme = document.body.getAttribute('data-cat-theme');
+    return theme === 'tiger' ? '🍖' : '🐟';
+}
+
 export function catNotify(message, type = 'success') {
     $('.cat-notification').remove();
     const emoji = getThemeEmoji();
@@ -18,8 +24,7 @@ export function catNotify(message, type = 'success') {
         progress: '#f39c12'
     };
     const bgColor = colors[type] || colors.success;
-    // 완료 알람(✅)이 포함된 경우 고양이 이모지를 강제로 안 붙임!
-    const displayMsg = message.includes('✅') ? message : message.replace(/^(🐱|🐯)\s*/, `${emoji} `);
+    const displayMsg = message.replace(/^(🐱|🐯)\s*/, `${emoji} `);
     const notifyHtml = $(`<div class="cat-notification cat-native-font" style="background-color: ${bgColor};">${displayMsg}</div>`);
     $('body').append(notifyHtml);
     requestAnimationFrame(() => notifyHtml.addClass('show'));
@@ -46,24 +51,22 @@ export function catNotifyProgress(message, onAbort) {
     return el;
 }
 
+// 🚨 마스터 요청: 엔터(줄바꿈) 증발하는 악질 버그 수리 완료!
 export function cleanResult(text) {
     if (!text) return "";
     return text
         .replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "")
         .replace(/```[\s\S]*?```/g, "")
         .replace(/`([^`]+)`/g, "$1")
-        .replace(/[^\S\r\n]{2,}/g, " ") 
+        .replace(/[^\S\r\n]{2,}/g, " ") // 스페이스랑 탭만 줄이고 줄바꿈(\r\n)은 절대 안 건드림!
         .trim();
 }
 
 export function getModelTheme(modelName) {
     if (!modelName) return 'cat';
     const lower = modelName.toLowerCase();
-    
-    // 🚨 마스터 지시: 아무리 복잡한 이름이라도 Pro/Ultra가 섞이면 무조건 호랑이로 변신!
-    if (lower.includes('pro') || lower.includes('프로') || lower.includes('ultra') || lower.includes('울트라')) return 'tiger';
-    
-    // 🚨 그 외 Flash, Lite 등은 안전하게 고양이 유지
+    if (lower.includes('pro') || lower.includes('프로')) return 'tiger';
+    if (lower.includes('flash') || lower.includes('플래') || lower.includes('플레')) return 'cat';
     return 'cat';
 }
 

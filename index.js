@@ -2,7 +2,7 @@
 // 🐱 Cat Translator v18.2.0 "호랑이 각성" (UI/UX 튜닝판)
 // ============================================================
 import { extension_settings, getContext } from '../../../../scripts/extensions.js';
-import { catNotify, getThemeEmoji, setTextareaValue, getModelTheme, detectLanguageDirection } from './utils.js';
+import { catNotify, getThemeEmoji, getCompletionEmoji, setTextareaValue, getModelTheme, detectLanguageDirection } from './utils.js';
 import { initCache } from './cache.js';
 import { fetchTranslation, gatherContextMessages } from './translator.js';
 import { setupSettingsPanel, collectSettings, updateCacheStats, injectMessageButtons, injectInputButtons, setupDragDictionary, setupMutationObserver, showHistoryPopup, applyTheme } from './ui.js';
@@ -24,16 +24,15 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
     const startGlow = () => $(`.mes[mesid="${msgId}"]`).find('.cat-mes-trans-btn .cat-emoji-icon').addClass('cat-glow-anim');
     const stopGlow = () => $(`.mes[mesid="${msgId}"]`).find('.cat-mes-trans-btn .cat-emoji-icon').removeClass('cat-glow-anim');
 
+    // 자동번역 여부 판별
+    const isAutoMode = (settings.autoMode !== 'none');
+    const isAutoTriggered = isAutoMode && !abortSignal; // 벌크는 abortSignal 있음
+
     if ($(`.mes[mesid="${msgId}"]`).find('.cat-mes-trans-btn .cat-emoji-icon.cat-glow-anim').length > 0) return;
     startGlow();
 
     try {
         const mesBlock = $(`.mes[mesid="${msgId}"]`);
-        
-        // 🚨 마스터 지시: 번역 누르면 거슬리는 팝업 및 상태창(Extra Details) 스르륵 숨기기!
-        $('.cat-history-popup, .cat-drag-popup').remove();
-        mesBlock.find('details').removeAttr('open');
-
         const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
@@ -41,8 +40,10 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
         const existingTranslation = !isInput ? msg.extra?.display_text : null;
         const isRetranslation = !!existingTranslation;
 
+        // 번역 진행 토스트
         if (!silent && !isRetranslation) {
-            catNotify(`${getThemeEmoji()} 번역 진행 중...`, "success");
+            const prefix = isAutoTriggered ? '자동 번역' : '번역';
+            catNotify(`${getThemeEmoji()} ${prefix} 진행 중...`, "success");
         }
 
         if (isRetranslation) {
@@ -62,7 +63,7 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
 }
 
 async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTranslation, abortSignal, silent = false) {
-    const forceLang = null; 
+    const forceLang = null; // 스마트 언어 감지로 위임
     const contextRange = parseInt(settings.contextRange) || 1;
     const contextMsgs = gatherContextMessages(msgId, stContext, contextRange);
 
@@ -72,9 +73,10 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
         if (!msg.extra) msg.extra = {};
         if (isInput) { if (!msg.extra.original_mes) msg.extra.original_mes = textToTranslate; msg.mes = result.text; } else { msg.extra.display_text = result.text; }
         stContext.updateMessageBlock(msgId, msg);
-        
-        // 🚨 마스터 지시: 번역 성공 시 영롱한 완료 알람 띄우기!
-        if (!silent) catNotify(`✅ 번역 완료!`, "success");
+        if (!silent) {
+            const preview = result.text.substring(0, 25) + (result.text.length > 25 ? '...' : '');
+            catNotify(`${getCompletionEmoji()} 번역 완료! '${preview}'`, "success");
+        }
     }
 }
 
@@ -86,7 +88,7 @@ async function handleEditAreaTranslation(editArea, msgId, abortSignal) {
     catNotify(isRetry ? `${getThemeEmoji()} 다른 표현으로 재번역 중...` : `${getThemeEmoji()} 스마트 번역 중...`, "success");
     const contextRange = parseInt(settings.contextRange) || 1; const contextMsgs = gatherContextMessages(msgId, stContext, contextRange);
     const result = await fetchTranslation(textToTranslate, settings, stContext, { forceLang, prevTranslation: prevTrans, contextMessages: contextMsgs, abortSignal });
-    if (result && result.text !== currentText) { editArea.data('cat-original-text', textToTranslate); editArea.data('cat-last-translated', result.text); editArea.data('cat-last-target-lang', result.lang); setTextareaValue(editArea[0], result.text); catNotify(`✅ 번역 덮어쓰기 완료!`, "success"); }
+    if (result && result.text !== currentText) { editArea.data('cat-original-text', textToTranslate); editArea.data('cat-last-translated', result.text); editArea.data('cat-last-target-lang', result.lang); setTextareaValue(editArea[0], result.text); catNotify(isRetry ? `${getCompletionEmoji()} 재번역 덮어쓰기 완료!` : `${getCompletionEmoji()} 번역 덮어쓰기 완료!`, "success"); }
 }
 
 function revertMessage(id) {

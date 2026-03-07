@@ -2,7 +2,7 @@
 // 🐱 Cat Translator v18.2.0 - translator.js
 // ============================================================
 import { secret_state, SECRET_KEYS } from '../../../../scripts/secrets.js';
-import { cleanResult, catNotify, detectLanguageDirection, getThemeEmoji } from './utils.js';
+import { cleanResult, catNotify, detectLanguageDirection, getThemeEmoji, getCompletionEmoji } from './utils.js';
 import { getCached, setCached } from './cache.js';
 
 export const SYSTEM_SHIELD = `[ABSOLUTE DIRECTIVE - VIOLATION = FAILURE]
@@ -49,17 +49,23 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
     if (!prevTranslation) {
         const cached = await getCached(text, targetLang);
         if (cached) {
-            if (!silent) catNotify(`${getThemeEmoji()} 캐시 히트! ~${Math.round(text.length * 0.5)} 토큰 절약`, "success");
+            if (!silent) catNotify(`${getCompletionEmoji()} 캐시 히트! ~${Math.round(text.length * 0.5)} 토큰 절약`, "success");
             return { text: cached.translated, lang: targetLang, fromCache: true };
         }
     }
 
-    // 🚨 마스터 튜닝: 멍청한 단순 치환(Ghost's -> 고스트's)을 막기 위해 프롬프트 주입 방식으로 변경!
-    const matchCount = (settings.dictionary && settings.dictionary.trim()) ? settings.dictionary.split('\n').length : 0;
-    if (matchCount > 0 && !silent) {
-        // 백그라운드에서 조용히 AI에게 사전을 주입합니다.
+    // 사전 프롬프트 주입 방식 + 매칭 알림
+    const dictLines = (settings.dictionary && settings.dictionary.trim()) ? settings.dictionary.split('\n').filter(l => l.includes('=')) : [];
+    if (dictLines.length > 0 && !silent) {
+        // 원문에 사전 단어가 실제로 포함되어 있는지 체크
+        let matchCount = 0;
+        dictLines.forEach(line => {
+            const orig = line.split('=')[0].trim();
+            if (orig && text.toLowerCase().includes(orig.toLowerCase())) matchCount++;
+        });
+        if (matchCount > 0) catNotify(`🐾 사전 ${matchCount}개 단어 매칭됨!`, "success");
     }
-    const preSwapped = text.trim(); 
+    const preSwapped = text.trim();
 
     const prompt = assemblePrompt(preSwapped, targetLang, isToEnglish, settings, { prevTranslation, contextMessages });
 

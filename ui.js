@@ -1,7 +1,7 @@
 // ============================================================
 // 🐱 Cat Translator v18.2.0 - ui.js
 // ============================================================
-import { catNotify, catNotifyProgress, getThemeEmoji, getModelTheme, setTextareaValue } from './utils.js';
+import { catNotify, catNotifyProgress, getThemeEmoji, getCompletionEmoji, getModelTheme, setTextareaValue } from './utils.js';
 import { getStats, clearAllCache, exportSettings, importSettings, getHistory, togglePin } from './cache.js';
 import { fetchTranslation, gatherContextMessages, SYSTEM_SHIELD, STYLE_PRESETS } from './translator.js';
 
@@ -19,6 +19,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     const styleOptions = Object.entries(STYLE_PRESETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
     const statsData = getStats();
     
+    // 🚨 마스터 튜닝: 우편함 아이콘 동적 판별
     const dictIcon = (settings.dictionary && settings.dictionary.trim()) ? '📬' : '📭';
 
     const html = `
@@ -79,10 +80,28 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     $('#ct-key-toggle').on('click', () => { const i = $('#ct-key'); i.attr('type', i.attr('type') === 'password' ? 'text' : 'password'); });
     $('#ct-model').val(settings.directModel).on('change', function () { const val = $(this).val(); $('#ct-model-custom').toggle(val === 'custom'); if (val !== 'custom') applyTheme(getModelTheme(val)); });
     $('#ct-model-custom').val(settings.customModelName || '').on('input', function () { applyTheme(getModelTheme($(this).val())); });
-    $('#ct-profile').val(settings.profile).on('change', function () { settings.profile = $(this).val(); $('#ct-direct-settings').toggle(settings.profile === ''); const pn = $(this).find('option:selected').text().toLowerCase(); if (pn.includes('pro') || pn.includes('프로')) applyTheme('tiger'); else if (pn.includes('flash') || pn.includes('플래')) applyTheme('cat'); else if (settings.profile === '') applyTheme(getModelTheme(settings.directModel)); });
+    $('#ct-profile').val(settings.profile).on('change', function () {
+        settings.profile = $(this).val();
+        $('#ct-direct-settings').toggle(settings.profile === '');
+        const pn = $(this).find('option:selected').text().toLowerCase();
+        // 프리셋 이름에서 pro/프로/tiger/호랑이 감지 → 🐯
+        if (pn.includes('pro') || pn.includes('프로') || pn.includes('tiger') || pn.includes('호랑이')) {
+            applyTheme('tiger');
+        // flash/플래/cat/고양이 감지 → 🐱
+        } else if (pn.includes('flash') || pn.includes('플래') || pn.includes('플레') || pn.includes('cat') || pn.includes('고양이')) {
+            applyTheme('cat');
+        // 직접 연결이면 모델명 기준
+        } else if (settings.profile === '') {
+            applyTheme(getModelTheme(settings.directModel));
+        // 아무것도 못 찾으면 기본 🐱
+        } else {
+            applyTheme('cat');
+        }
+    });
     $('#ct-style').val(settings.style || 'normal').on('change', function () { const preset = STYLE_PRESETS[$(this).val()]; if (preset) $('#ct-temperature').val(preset.temperature); });
     $('#ct-auto-mode').val(settings.autoMode); $('#ct-lang').val(settings.targetLang); $('#ct-temperature').val(settings.temperature || 0.3);
     
+    // 🚨 마스터 튜닝: 동적 우편함 애니메이션 연결
     $('#ct-dictionary').on('input', function () {
         settings.dictionary = $(this).val();
         $('#ct-dict-reset').text(settings.dictionary.trim() ? '📬' : '📭');
@@ -154,7 +173,7 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
             if (result && result.text && result.text !== currentText) {
                 sendArea.data('cat-original-text', textToTranslate); sendArea.data('cat-last-translated', result.text); sendArea.data('cat-last-target-lang', result.lang);
                 setTextareaValue(sendArea[0], result.text);
-                catNotify(`✅ 번역 완료!`, "success"); // 🚨 입력창 번역 완료 추가
+                catNotify(`${getCompletionEmoji()} 입력창 번역 완료!`, "success");
             }
         } finally { isTranslatingInput = false; transBtn.find('.cat-emoji-icon').removeClass('cat-glow-anim'); }
     });
@@ -180,6 +199,7 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
     const popup = $(`<div class="cat-bulk-popup"><div class="cat-bulk-option" data-count="all">전체</div><div class="cat-bulk-option" data-count="10">최근 10</div><div class="cat-bulk-option" data-count="30">최근 30</div><div class="cat-bulk-option" data-count="50">최근 50</div></div>`);
     const btn = $('#cat-bulk-btn'); const rect = btn[0].getBoundingClientRect();
     
+    // 🚨 마스터 튜닝: 벌크 팝업이 채팅창에 안 먹히도록 최상위 돌출 (z-index 폭등)
     popup.css({ position: 'fixed', bottom: (window.innerHeight - rect.top + 8) + 'px', right: (window.innerWidth - rect.right) + 'px', zIndex: 2147483647 });
     $('body').append(popup);
     popup.find('.cat-bulk-option').on('click', async function () { const count = $(this).data('count'); popup.remove(); await executeBulkTranslation(count, settings, stContext, processMessageFn); });
@@ -187,10 +207,12 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
 }
 
 async function executeBulkTranslation(count, settings, stContext, processMessageFn) {
-    const allMes = $('.mes'); let targets = [];
+    const allMes = $('.mes'); let targets = []; let originalCount = 0;
     if (count === 'all') { allMes.each(function () { targets.push($(this)); }); } else { const num = parseInt(count); const start = Math.max(0, allMes.length - num); allMes.slice(start).each(function () { targets.push($(this)); }); }
+    originalCount = targets.length;
     targets = targets.filter(el => { const msgId = parseInt(el.attr('mesid'), 10); const msg = stContext.chat[msgId]; return msg && !msg.extra?.display_text; });
-    if (targets.length === 0) { catNotify(`${getThemeEmoji()} 번역할 메시지가 없습니다.`, "warning"); return; }
+    const skipped = originalCount - targets.length;
+    if (targets.length === 0) { catNotify(`${getThemeEmoji()} 번역할 메시지가 없습니다. (${skipped}개 이미 번역됨)`, "warning"); return; }
 
     bulkAbortController = new AbortController(); const total = targets.length; let completed = 0;
     $('#cat-bulk-btn').html('<span class="cat-emoji-icon" style="filter:grayscale(1);">⚡</span>');
@@ -206,11 +228,9 @@ async function executeBulkTranslation(count, settings, stContext, processMessage
         if (progressEl.length) progressEl.text(`${getThemeEmoji()} 벌크 번역 중... (${completed}/${total}) [클릭시 중단]`);
         if (!bulkAbortController.signal.aborted) await new Promise(r => setTimeout(r, 700));
     }
-    progressEl.remove(); const emoji = getThemeEmoji(); $('#cat-bulk-btn').html('<span class="cat-emoji-icon">⚡</span>');
+    progressEl.remove(); $('#cat-bulk-btn').html('<span class="cat-emoji-icon">⚡</span>');
     $('#cat-bulk-btn').off('click').on('click', (e) => { e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
-    
-    // 🚨 마스터 지시: 벌크 번역 완료 시에도 ✅ 표시 추가!
-    if (bulkAbortController.signal.aborted) catNotify(`🔴 번역 중단됨 (${completed}개 완료)`, "error"); else catNotify(`✅ 벌크 번역 완료! (${completed}개)`, "success");
+    if (bulkAbortController.signal.aborted) catNotify(`🔴 번역 중단됨 (${completed}개 완료)`, "error"); else catNotify(`${getCompletionEmoji()} 벌크 완료! ${completed}개 번역${skipped > 0 ? ', ' + skipped + '개 스킵' : ''}`, "success");
     bulkAbortController = null;
 }
 
@@ -237,7 +257,8 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
     popup.find('.cat-history-new').on('click', () => {
         if (newTransBusy) return;
         newTransBusy = true;
-        catNotify(`${getThemeEmoji()} 새로운 번역을 생성하는 중...`, "success");
+        // 🚨 마스터 튜닝: 새로 번역 누르면 토스트 알람 띄우기!
+        catNotify(`${getThemeEmoji()} 새로운 번역 생성 중...`, "success");
         onSelect(null, true);
         popup.remove();
     });
@@ -246,6 +267,7 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
     return true;
 }
 
+// (드래그 딕셔너리와 뮤테이션 옵저버는 기존과 동일하게 유지)
 export function setupDragDictionary(settings, saveSettingsFn) {
     let pawIcon = null; let _dragDebounce = null;
     const handleSelection = () => {
@@ -274,9 +296,19 @@ function showDragDictPopup(selectedText, rect, settings, saveSettingsFn) {
     $('body').append(popup); popup.find('.cat-drag-input').focus();
     const doRegister = () => {
         const transWord = popup.find('.cat-drag-input').val().trim(); if (!transWord) return;
+        // 사전 중복 체크
+        const existingLines = (settings.dictionary || '').split('\n').filter(l => l.includes('='));
+        const isDuplicate = existingLines.some(line => {
+            const orig = line.split('=')[0].trim().toLowerCase();
+            return orig === selectedText.toLowerCase();
+        });
+        if (isDuplicate) {
+            catNotify(`⚠️ "${selectedText}"은(는) 이미 사전에 등록되어 있습니다!`, "warning");
+            popup.remove(); return;
+        }
         const newEntry = `${selectedText}=${transWord}`; const current = settings.dictionary || '';
         settings.dictionary = current ? `${current}\n${newEntry}` : newEntry; $('#ct-dictionary').val(settings.dictionary);
-        $('#ct-dict-reset').text('📬'); 
+        $('#ct-dict-reset').text('📬');
         saveSettingsFn(); catNotify(`🐾 사전 등록 완료! ${selectedText} → ${transWord}`, "success"); popup.remove();
     };
     popup.find('.cat-drag-register').on('click', doRegister); popup.find('.cat-drag-input').on('keydown', (e) => { if (e.key === 'Enter') doRegister(); if (e.key === 'Escape') popup.remove(); }); popup.find('.cat-drag-cancel').on('click', () => popup.remove());
