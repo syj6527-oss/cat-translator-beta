@@ -1,27 +1,21 @@
-.cat-native-font { font-family: var(--smart-font, 'Noto Sans', 'Segoe UI', sans-serif) !important; }
-.cat-setting-row { margin-bottom: 12px; }
-.cat-setting-row > label { display: block; font-size: 0.85em; font-weight: bold; margin-bottom: 4px; opacity: 0.8; }
-.cat-key-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
-.ct-key-toggle-paw { position: absolute; right: 10px; cursor: pointer; font-size: 1.2em; z-index: 5; transition: 0.2s; }
-.ct-key-toggle-paw:hover { transform: scale(1.2) rotate(-10deg); }
+.cat-native-font { font-family: var(--smart-font, 'Noto Sans', sans-serif) !important; }
+.cat-setting-row { margin-bottom: 10px; }
+.cat-key-wrapper { position: relative; display: flex; align-items: center; }
+.ct-key-toggle-paw { position: absolute; right: 10px; cursor: pointer; font-size: 1.2em; transition: 0.2s; }
+.cat-key-toggle-paw:hover { transform: scale(1.2); }
 
-.cat-btn-group { display: inline-flex; gap: 12px; margin-left: 10px; align-items: center; vertical-align: middle; }
+.cat-btn-group { display: inline-flex; gap: 10px; margin-left: 10px; align-items: center; }
 .cat-mes-trans-btn { cursor: pointer; font-size: 1.4em; }
-.cat-mes-revert-btn { cursor: pointer; color: #ffb4a2; opacity: 0.5; font-size: 1em; transition: 0.2s; }
-.cat-mes-revert-btn:hover { opacity: 1; transform: rotate(-45deg); }
-
-.cat-btn-abort { background: rgba(231, 76, 60, 0.4) !important; border-color: #e74c3c !important; animation: cat-panic 1s infinite alternate; }
-@keyframes cat-panic { from { box-shadow: 0 0 2px red; } to { box-shadow: 0 0 10px red; } }
+.cat-mes-revert-btn { cursor: pointer; opacity: 0.5; color: #ffb4a2; }
+.cat-mes-revert-btn:hover { opacity: 1; }
 
 .cat-glow-anim { animation: cat-glow 1.5s infinite alternate ease-in-out; }
 @keyframes cat-glow { from { transform: scale(1); filter: drop-shadow(0 0 2px orange); } to { transform: scale(1.3); filter: drop-shadow(0 0 8px orange); } }
 
-.cat-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 12px 25px; border-radius: 50px; color: white; font-weight: bold; z-index: 99999; transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); background: #2ecc71; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.cat-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 12px 25px; border-radius: 50px; color: white; font-weight: bold; z-index: 99999; transition: bottom 0.5s; background: #2ecc71; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
 .cat-notification.show { bottom: 30px; }
 
-.cat-quick-paw { position: absolute; font-size: 24px; cursor: pointer; z-index: 10000; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); animation: cat-bounce 0.5s infinite alternate; user-select: none; }
+.cat-quick-paw { position: absolute; font-size: 24px; cursor: pointer; z-index: 10000; animation: cat-bounce 0.5s infinite alternate; }
 @keyframes cat-bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
 
-/* 병기 모드 스타일 */
-.mes .cat-bilingual-container { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); font-style: italic; opacity: 0.9; position: relative; }
-.mes .cat-bilingual-container::before { content: '🐾'; position: absolute; left: -20px; top: 8px; font-size: 0.8em; }
+.cat-btn-abort { background: rgba(231, 76, 60, 0.4) !important; border-color: #e74c3c !important; }
