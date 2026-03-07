@@ -205,8 +205,16 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
         popup.css({ position: 'fixed', bottom: (window.innerHeight - rect.top + 4) + 'px', left: rect.left + 'px', zIndex: 2147483647 });
     }
     $('body').append(popup);
-    popup.find('.cat-bulk-option').on('click', async function () { const count = $(this).data('count'); popup.remove(); await executeBulkTranslation(count, settings, stContext, processMessageFn); });
-    setTimeout(() => { $(document).one('click', () => popup.remove()); }, 50);
+    popup.find('.cat-bulk-option').on('click', async function (e) { e.stopPropagation(); const count = $(this).data('count'); popup.remove(); await executeBulkTranslation(count, settings, stContext, processMessageFn); });
+    // 모바일에서 터치 이벤트가 팝업을 즉시 닫는 것 방지 (300ms 대기)
+    setTimeout(() => {
+        $(document).on('click.catBulkClose', (e) => {
+            if (!$(e.target).closest('.cat-bulk-popup').length) {
+                popup.remove();
+                $(document).off('click.catBulkClose');
+            }
+        });
+    }, 300);
 }
 
 async function executeBulkTranslation(count, settings, stContext, processMessageFn) {
