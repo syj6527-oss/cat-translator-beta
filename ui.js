@@ -153,11 +153,8 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
     const btnWrap = $(`<div id="cat-input-wrap"></div>`);
     const transBtn = $(`<div id="cat-input-btn" title="번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">${emoji}</span></div>`);
     const revertBtn = $(`<div id="cat-input-revert" title="되돌리기" class="cat-input-icon interactable"><i class="fa-solid fa-rotate-left"></i></div>`);
-    // GPT 해법: ⚡ 버튼을 relative 래퍼로 감싸서 팝업이 absolute로 붙게
-    const bulkWrapper = $(`<div id="cat-bulk-wrapper" style="position:relative;"></div>`);
     const bulkBtn = $(`<div id="cat-bulk-btn" title="전체 번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">⚡</span></div>`);
-    bulkWrapper.append(bulkBtn);
-    btnWrap.append(transBtn).append(revertBtn).append(bulkWrapper); target.before(btnWrap);
+    btnWrap.append(transBtn).append(revertBtn).append(bulkBtn); target.before(btnWrap);
 
     transBtn.on('click', async (e) => {
         e.preventDefault(); const sendArea = $('#send_textarea'); const currentText = sendArea.val().trim();
@@ -201,9 +198,13 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
     $('.cat-bulk-popup').remove();
     const popup = $(`<div class="cat-bulk-popup"><div class="cat-bulk-option" data-count="all">전체</div><div class="cat-bulk-option" data-count="10">최근 10</div><div class="cat-bulk-option" data-count="30">최근 30</div><div class="cat-bulk-option" data-count="50">최근 50</div></div>`);
     
-    // GPT 해법: ⚡ 래퍼 안에 absolute로 붙이기 (JS 좌표 계산 불필요!)
-    popup.css({ position: 'absolute', bottom: '120%', right: '0', zIndex: 2147483647 });
-    $('#cat-bulk-wrapper').append(popup);
+    // ⚡ 버튼 위치 기준으로 팝업 배치
+    const btn = $('#cat-bulk-btn')[0];
+    if (btn) {
+        const rect = btn.getBoundingClientRect();
+        popup.css({ position: 'fixed', bottom: (window.innerHeight - rect.top + 4) + 'px', left: rect.left + 'px', zIndex: 2147483647 });
+    }
+    $('body').append(popup);
     popup.find('.cat-bulk-option').on('click', async function () { const count = $(this).data('count'); popup.remove(); await executeBulkTranslation(count, settings, stContext, processMessageFn); });
     setTimeout(() => { $(document).one('click', () => popup.remove()); }, 50);
 }
