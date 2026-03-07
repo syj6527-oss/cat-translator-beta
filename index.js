@@ -36,8 +36,9 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
         const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
-        let textToTranslate = isInput ? (msg.extra?.original_mes || msg.mes) : msg.mes;
-        const existingTranslation = !isInput ? msg.extra?.display_text : null;
+        // 항상 원본에서 읽기 (msg.mes가 이미 번역문일 수 있으므로)
+        let textToTranslate = msg.extra?.original_mes || msg.mes;
+        const existingTranslation = msg.extra?.display_text || null;
         const isRetranslation = !!existingTranslation;
 
         // 번역 진행 토스트
@@ -53,7 +54,7 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
                 if (isNew) {
                     doTranslateMessage(msgId, msg, textToTranslate, isInput, existingTranslation, abortSignal, true);
                 } else if (selectedText) {
-                    if (!msg.extra) msg.extra = {}; msg.extra.display_text = selectedText; stContext.updateMessageBlock(msgId, msg);
+                    if (!msg.extra) msg.extra = {}; msg.extra.display_text = selectedText; msg.mes = selectedText; stContext.updateMessageBlock(msgId, msg);
                 }
             });
             if (shown) return; 
@@ -71,12 +72,19 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
 
     if (result && result.text && result.text.trim() && result.text !== textToTranslate) {
         if (!msg.extra) msg.extra = {};
-        if (isInput) { if (!msg.extra.original_mes) msg.extra.original_mes = textToTranslate; msg.mes = result.text; } else { msg.extra.display_text = result.text; }
+        // 원본 백업 (최초 1회만)
+        if (!msg.extra.original_mes) msg.extra.original_mes = textToTranslate;
+        // A방식: msg.mes + display_text 둘 다 수정 (상태창/주석 블록 대응)
+        msg.extra.display_text = result.text;
+        msg.mes = result.text;
         stContext.updateMessageBlock(msgId, msg);
         if (!silent) {
             const preview = result.text.substring(0, 25) + (result.text.length > 25 ? '...' : '');
             catNotify(`${getCompletionEmoji()} 번역 완료! '${preview}'`, "success");
         }
+    } else if (!silent && result === null) {
+        // C방식: 번역 실패 시 수정 모드 안내
+        catNotify(`${getThemeEmoji()} 번역 실패. 연필 아이콘으로 수정 모드에서 시도해보세요.`, "warning");
     }
 }
 

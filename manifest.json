@@ -1,7 +1,7 @@
 {
     "name": "cat-translator-beta",
     "display_name": "🐯 트랜스레이터 Beta",
-    "version": "18.2.1",
+    "version": "18.2.2",
     "description": "호랑이 각성: 맞춤형 튜닝 UI & 스마트 자동번역",
     "author": "냥헴 & GPT & Claude",
     "js": "index.js",
