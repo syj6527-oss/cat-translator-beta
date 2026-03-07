@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.1.0 - utils.js
+// 🐱 Cat Translator v18.3.1 - utils.js
 // 유틸리티: 알림, 정규식 세탁기, HTML/CSS 방어, 언어 감지
 // ============================================================
 
@@ -8,14 +8,20 @@ export function getThemeEmoji() {
     return theme === 'tiger' ? '🐯' : '🐱';
 }
 
-// 번역 완료 보상 이모지 🐟/🍖
 export function getCompletionEmoji() {
     const theme = document.body.getAttribute('data-cat-theme');
     return theme === 'tiger' ? '🍖' : '🐟';
 }
 
+// 🚨 토스트 속도 제어: 부드러운 전환 및 유지 시간(3.5초) 증가!
 export function catNotify(message, type = 'success') {
-    $('.cat-notification').remove();
+    const existing = $('.cat-notification');
+    // 기존 창이 있으면 강제 삭제가 아니라 부드럽게 숨김 처리 후 교체
+    if (existing.length > 0) {
+        existing.removeClass('show');
+        setTimeout(() => existing.remove(), 300); 
+    }
+
     const emoji = getThemeEmoji();
     const colors = {
         success: '#2ecc71',
@@ -26,14 +32,19 @@ export function catNotify(message, type = 'success') {
     const bgColor = colors[type] || colors.success;
     const displayMsg = message.replace(/^(🐱|🐯)\s*/, `${emoji} `);
     const notifyHtml = $(`<div class="cat-notification cat-native-font" style="background-color: ${bgColor};">${displayMsg}</div>`);
+    
     $('body').append(notifyHtml);
-    requestAnimationFrame(() => notifyHtml.addClass('show'));
+    
+    // 약간의 딜레이를 줘서 애니메이션이 씹히는 현상 방지
+    setTimeout(() => {
+        requestAnimationFrame(() => notifyHtml.addClass('show'));
+    }, 50);
 
     if (type !== 'progress') {
         setTimeout(() => {
             notifyHtml.removeClass('show');
-            setTimeout(() => notifyHtml.remove(), 500);
-        }, 2500);
+            setTimeout(() => notifyHtml.remove(), 400);
+        }, 3500); // 2.5초 -> 3.5초로 넉넉하게 연장!
     }
     return notifyHtml;
 }
@@ -51,14 +62,13 @@ export function catNotifyProgress(message, onAbort) {
     return el;
 }
 
-// 🚨 마스터 요청: 엔터(줄바꿈) 증발하는 악질 버그 수리 완료!
 export function cleanResult(text) {
     if (!text) return "";
     return text
         .replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "")
         .replace(/```[\s\S]*?```/g, "")
         .replace(/`([^`]+)`/g, "$1")
-        .replace(/[^\S\r\n]{2,}/g, " ") // 스페이스랑 탭만 줄이고 줄바꿈(\r\n)은 절대 안 건드림!
+        .replace(/[^\S\r\n]{2,}/g, " ") 
         .trim();
 }
 
@@ -102,6 +112,45 @@ export function applyPreReplaceWithCount(text, dictionary, isToEnglish) {
     if (lines.length === 0) return { swapped: text, matchCount: 0 };
 
     let result = text;
+    let matchCount = 0;
+    lines.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length);
+
+    lines.forEach(line => {
+        const parts = line.split('=');
+        if (parts.length >= 2) {
+            const orig = parts[0].trim();
+            const trans = parts.slice(1).join('=').trim();
+            const searchStr = isToEnglish ? trans : orig;
+            const replaceStr = isToEnglish ? orig : trans;
+            if (searchStr && replaceStr) {
+                const escaped = searchStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escaped, 'gi');
+                const matches = result.match(regex);
+                if (matches) {
+                    matchCount += matches.length;
+                    result = result.replace(regex, replaceStr);
+                }
+            }
+        }
+    });
+    return { swapped: result, matchCount };
+}
+
+export function normalizeText(text) {
+    if (!text) return "";
+    return text.toLowerCase().replace(/[^a-z가-힣0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g, '').trim();
+}
+
+export function setTextareaValue(el, value) {
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, "value"
+    )?.set;
+    if (nativeSetter) nativeSetter.call(el, value);
+    else el.value = value;
+    $(el).val(value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+}
     let matchCount = 0;
     lines.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length);
 
