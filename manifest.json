@@ -1,8 +1,8 @@
 {
-    "name": "cat-translator",
-    "display_name": "🐱 캣 트랜스레이터 (v19.3 Ultimate)",
-    "version": "19.3.0",
-    "description": "수정창 번역, 인덱스DB 사전, 단일 모듈 최적화",
+    "name": "cat-translator-beta",
+    "display_name": "🐱트랜스레이터 Beta",
+    "version": "18.0.0-Beta",
+    "description": "순정 뼈대 기반 + IndexedDB 영구 캐시/사전 + 수정창 번역 완벽 이식",
     "author": "냥헴 & GPT",
     "js": "index.js",
     "css": "style.css"
