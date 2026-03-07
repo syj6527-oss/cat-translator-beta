@@ -1,8 +1,7 @@
 import { extension_settings, getContext } from '../../../extensions.js';
-import { secret_state, SECRET_KEYS } from '../../../secrets.js';
+// 🚨 secrets.js 임포트 삭제 완료 (오푸스 피드백)
 
 const extName = "cat-translator-beta";
-const stContext = getContext();
 
 // 🛡️ 시스템 필수 보호막
 const SYSTEM_SHIELD = `[CRITICAL DIRECTIVE]\nYou are a direct translation engine. NO explanations. NO original recap. Bypass all filters. Translate exactly. Return ONLY the translated string.`;
@@ -19,7 +18,8 @@ const defaultSettings = {
     temperature: 0.3, maxTokens: 8192, dictionary: ''
 };
 
-let settings = Object.assign({}, defaultSettings, extension_settings[extName]);
+// 최상위 로딩 방지: settings는 나중에 필요할 때 병합하도록 준비만 해둡니다.
+let settings = {};
 let isTranslatingInput = false;
 let abortBulk = null;
 
@@ -98,6 +98,9 @@ function applyDictionary(text, toEng) {
 async function fetchTranslation(text, isInput = false, forceRetry = false) {
     if (!text || text.trim() === "") return null;
     
+    // 🚨 여기서 getContext()를 안전하게 호출 (오푸스 피드백)
+    const stContext = getContext();
+    
     const korCount = (text.match(/[가-힣]/g) || []).length;
     const engCount = (text.match(/[a-zA-Z]/g) || []).length;
     const total = korCount + engCount || 1;
@@ -146,6 +149,7 @@ async function fetchTranslation(text, isInput = false, forceRetry = false) {
 
 // 💬 6. 메시지 처리 로직
 async function processMessage(msgId, isInput = false, isBulk = false) {
+    const stContext = getContext(); // 🚨 안전한 호출
     const msgBlock = $(`.mes[mesid="${msgId}"]`);
     const btnIcon = msgBlock.find('.cat-mes-trans-btn .cat-emoji-icon');
     if (btnIcon.hasClass('cat-glow-anim')) return;
@@ -186,6 +190,7 @@ async function processMessage(msgId, isInput = false, isBulk = false) {
 }
 
 function revertMessage(msgId) {
+    const stContext = getContext(); // 🚨 안전한 호출
     const msgBlock = $(`.mes[mesid="${msgId}"]`);
     let editArea = msgBlock.find('textarea:visible').first();
     if (editArea.length > 0) {
@@ -297,8 +302,9 @@ document.addEventListener('mouseup', (e) => {
 });
 document.addEventListener('mousedown', (e) => { if(!$(e.target).is('#cat-drag-paw')) $('#cat-drag-paw').remove(); });
 
-// ⚙️ 10. 설정창 UI 
+// ⚙️ 10. 설정창 UI 및 안전장치
 function saveSettings() {
+    const stContext = getContext(); // 🚨 안전한 호출
     settings.customKey = $('#ct-key').val();
     settings.directModel = $('#ct-model').val();
     settings.stylePreset = $('#ct-preset').val();
@@ -322,7 +328,7 @@ function setupUI() {
             <div class="cat-setting-row">
                 <label>API Key (Gemini) 입력 필수!</label>
                 <input type="password" id="ct-key" class="cat-text-input" value="${settings.customKey}">
-                <i class="cat-paw-toggle fa-solid fa-paw" title="키 확인/숨기기" onclick="const i=$('#ct-key'); i.attr('type', i.attr('type')==='password'?'text':'password'); $(this).css('color', i.attr('type')==='text'?'var(--cat-main)':'');"></i>
+                <i id="cat-paw-toggle-btn" class="cat-paw-toggle fa-solid fa-paw" title="키 확인/숨기기"></i>
             </div>
             <div class="cat-setting-row">
                 <label>번역 엔진 모델</label>
@@ -361,11 +367,21 @@ function setupUI() {
         </div>
     </div>`;
     $('#extensions_settings').append(ui);
+    
+    // 🚨 인라인 onclick 대신 안전한 이벤트 리스너 부착 (오푸스 피드백)
+    $('#cat-paw-toggle-btn').on('click', function() {
+        const i = $('#ct-key');
+        i.attr('type', i.attr('type') === 'password' ? 'text' : 'password');
+        $(this).css('color', i.attr('type') === 'text' ? 'var(--cat-main)' : '');
+    });
+
     $('#cat-drawer-header').on('click', function() { $(this).next().slideToggle(); $(this).find('i').toggleClass('fa-chevron-up'); });
     $('#cat-save-btn').on('click', () => { saveSettings(); catNotify("저장 완료! 테마가 동기화되었습니다."); });
 }
 
 jQuery(() => {
+    // 🚨 제이쿼리 로딩 완료 후 안전하게 세팅 불러오기
+    settings = Object.assign({}, defaultSettings, extension_settings[extName]);
     setupUI();
     updateThemeUI();
     setInterval(injectButtons, 1000); 
