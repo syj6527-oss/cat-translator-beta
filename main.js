@@ -28,7 +28,8 @@ let originalInputText = "";    // 입력창 원문 복구용
 // ── 기본 설정값 ───────────────────────────────
 const defaultSettings = {
     customKey:      '',                   // Gemini API 키
-    modelId:        'direct',             // AI 모델 (기본: 직접 연결 모드)
+    modelId:        'direct',             // 연결 모드 (direct 또는 프리필 ID)
+    directModel:    'gemini-2.0-flash',   // 직접 연결 모드 전용 모델
     autoMode:       'off',                // 자동 번역 모드
     targetLang:     'Korean',             // 번역 목표 언어
     temperature:    0.1,                  // 온도 (0~1)
@@ -180,7 +181,6 @@ function handleInputRevert() {
 }
 
 // ── 버튼 주입 래퍼 ───────────────────────────
-// ui.js의 injectButtons에 핸들러를 바인딩해서 호출
 function runInjectButtons() {
     injectButtons(settings, handleChatTranslate, handleChatRevert);
 
@@ -188,6 +188,51 @@ function runInjectButtons() {
     if ($('#cat-input-trans').length && !$('#cat-input-trans').data('bound')) {
         $('#cat-input-trans').on('click', handleInputTranslate).data('bound', true);
         $('#cat-input-revert').on('click', handleInputRevert).data('bound', true);
+    }
+
+    // 🚀 전체 번역 버튼 이벤트 (없을 때만 등록)
+    if ($('#cat-batch-btn').length && !$('#cat-batch-btn').data('bound')) {
+        $('#cat-batch-btn').on('click', (e) => {
+            e.stopPropagation();
+
+            // 이미 팝업 열려있으면 닫기
+            if ($('#cat-batch-popup').length) {
+                $('#cat-batch-popup').remove();
+                return;
+            }
+
+            // 미니 팝업 생성
+            const popup = $(`
+                <div id="cat-batch-popup">
+                    <div class="cat-batch-option" data-val="10">최근 10개</div>
+                    <div class="cat-batch-option" data-val="30">최근 30개</div>
+                    <div class="cat-batch-option" data-val="50">최근 50개</div>
+                    <div class="cat-batch-option" data-val="all">전체 번역</div>
+                </div>
+            `);
+
+            // 버튼 위치 기준으로 팝업 위치 설정
+            const btnPos = $('#cat-batch-btn').offset();
+            popup.css({
+                left: btnPos.left,
+                bottom: $(window).height() - btnPos.top + 8
+            }).appendTo('body').css('position', 'fixed');
+
+            // 옵션 클릭 → 번역 시작
+            popup.find('.cat-batch-option').on('click', function() {
+                const val = $(this).data('val');
+                popup.remove();
+                handleBatchTranslate(val === 'all' ? 'all' : parseInt(val));
+            });
+
+            // 바깥 클릭 시 팝업 닫기
+            setTimeout(() => {
+                $(document).one('click', () => $('#cat-batch-popup').remove());
+            }, 10);
+
+        }).data('bound', true);
+
+        $('#cat-abort-btn').on('click', handleAbort).data('bound', true);
     }
 }
 
