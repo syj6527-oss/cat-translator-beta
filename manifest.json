@@ -1,8 +1,8 @@
 {
     "name": "cat-translator-beta",
     "display_name": "🐱트랜스레이터 Beta",
-    "version": "18.1.0-Beta",
-    "description": "순정 뼈대 + 드래그 사전 완벽 연동(모바일 위치 수정) + 영구 캐시",
+    "version": "18.5.0-Beta",
+    "description": "순정 뼈대 유지 + 핑크 냥발 + 실시간 발광 픽스 + IndexedDB 영구 강화",
     "author": "냥헴 & GPT",
     "js": "index.js",
     "css": "style.css"
