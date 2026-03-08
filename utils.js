@@ -1,6 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.1.0 - utils.js
-// 유틸리티: 알림, 정규식 세탁기, HTML/CSS 방어, 언어 감지
+// 🐱 Cat Translator v18.4.0 - utils.js
 // ============================================================
 
 export function getThemeEmoji() {
@@ -15,44 +14,20 @@ export function getCompletionEmoji() {
 
 export function catNotify(message, type = 'success') {
     $('.cat-notification').remove();
-    const emoji = getThemeEmoji();
     const colors = { success: '#2ecc71', warning: '#f39c12', error: '#e74c3c', progress: '#f39c12' };
-    const bgColor = colors[type] || colors.success;
-    const displayMsg = message.replace(/^(🐱|🐯)\s*/, `${emoji} `);
-    const notifyHtml = $(`<div class="cat-notification cat-native-font" style="background-color: ${bgColor};">${displayMsg}</div>`);
+    const notifyHtml = $(`<div class="cat-notification cat-native-font" style="background-color: ${colors[type] || colors.success};">${message}</div>`);
     $('body').append(notifyHtml);
     requestAnimationFrame(() => notifyHtml.addClass('show'));
-
     if (type !== 'progress') {
-        setTimeout(() => {
-            notifyHtml.removeClass('show');
-            setTimeout(() => notifyHtml.remove(), 500);
-        }, 2500);
+        setTimeout(() => { notifyHtml.removeClass('show'); setTimeout(() => notifyHtml.remove(), 500); }, 2500);
     }
     return notifyHtml;
 }
 
-export function catNotifyProgress(message, onAbort) {
-    const el = catNotify(message, 'progress');
-    if (onAbort) {
-        el.css({ cursor: 'pointer', pointerEvents: 'auto' });
-        el.on('click', () => { onAbort(); el.removeClass('show'); setTimeout(() => el.remove(), 500); });
-    }
-    return el;
-}
-
-// 🚨 마스터 요청: 코드블록 내부 텍스트 및 YAML 들여쓰기 증발 완벽 방어!
 export function cleanResult(text) {
     if (!text) return "";
-    
-    let cleaned = text.replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "");
-    
-    const wholeCodeBlockMatch = cleaned.match(/^```[a-z]*\n([\s\S]*?)\n```$/i);
-    if (wholeCodeBlockMatch) {
-        cleaned = wholeCodeBlockMatch[1];
-    }
-
-    return cleaned.trim();
+    // 코드블록 구조 보존을 위해 최소한의 라벨만 제거
+    return text.replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "").trim();
 }
 
 export function getCacheModelKey(settings) {
@@ -63,57 +38,18 @@ export function getCacheModelKey(settings) {
 export function getModelTheme(modelName) {
     if (!modelName) return 'cat';
     const lower = modelName.toLowerCase();
-    if (lower.includes('pro') || lower.includes('프로') || lower.includes('호랑이') || lower.includes('tiger')) return 'tiger';
-    if (lower.includes('flash') || lower.includes('플래') || lower.includes('플레') || lower.includes('고양이') || lower.includes('cat')) return 'cat';
-    return 'cat';
+    return (lower.includes('pro') || lower.includes('프로') || lower.includes('tiger') || lower.includes('호랑이')) ? 'tiger' : 'cat';
 }
 
 export function detectLanguageDirection(text, settings) {
     const korCount = (text.match(/[가-힣]/g) || []).length;
     const engCount = (text.match(/[a-zA-Z]/g) || []).length;
-    const jpCount = (text.match(/[\u3040-\u309F\u30A0-\u30FF]/g) || []).length;
-    const cnCount = (text.match(/[\u4E00-\u9FFF]/g) || []).length;
-    const total = korCount + engCount + jpCount + cnCount;
-
-    if (total === 0) return { isToEnglish: false, targetLang: settings.targetLang };
-    const korRatio = korCount / total; const engRatio = engCount / total;
-
-    if (korRatio >= 0.7) return { isToEnglish: true, targetLang: 'English' };
-    if (engRatio >= 0.7) return { isToEnglish: false, targetLang: 'Korean' };
-    return { isToEnglish: false, targetLang: settings.targetLang };
-}
-
-export function applyPreReplace(text, dictionary, isToEnglish) { return applyPreReplaceWithCount(text, dictionary, isToEnglish).swapped; }
-export function applyPreReplaceWithCount(text, dictionary, isToEnglish) {
-    if (!dictionary || dictionary.trim() === "") return { swapped: text, matchCount: 0 };
-    const lines = dictionary.split('\n').filter(l => l.includes('='));
-    if (lines.length === 0) return { swapped: text, matchCount: 0 };
-
-    let result = text; let matchCount = 0;
-    lines.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length);
-
-    lines.forEach(line => {
-        const parts = line.split('=');
-        if (parts.length >= 2) {
-            const orig = parts[0].trim(); const trans = parts.slice(1).join('=').trim();
-            const searchStr = isToEnglish ? trans : orig; const replaceStr = isToEnglish ? orig : trans;
-            if (searchStr && replaceStr) {
-                const escaped = searchStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escaped, 'gi'); const matches = result.match(regex);
-                if (matches) { matchCount += matches.length; result = result.replace(regex, replaceStr); }
-            }
-        }
-    });
-    return { swapped: result, matchCount };
-}
-
-export function normalizeText(text) {
-    if (!text) return "";
-    return text.toLowerCase().replace(/[^a-z가-힣0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/g, '').trim();
+    if (korCount >= engCount) return { isToEnglish: true, targetLang: 'English' };
+    return { isToEnglish: false, targetLang: settings.targetLang || 'Korean' };
 }
 
 export function setTextareaValue(el, value) {
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-    if (nativeSetter) nativeSetter.call(el, value); else el.value = value;
-    $(el).val(value); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+    const ns = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+    if (ns) ns.call(el, value); else el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
 }
