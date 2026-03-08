@@ -118,7 +118,7 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
             const parts = data.candidates?.[0]?.content?.parts || []; const thoughtPart = parts.find(p => p.thought); thought = thoughtPart?.text || null; const actualPart = parts.find(p => !p.thought) || parts[parts.length - 1]; result = actualPart?.text?.trim() || "";
         }
 
-        let cleaned = cleanResult(result);
+        let cleaned = cleanResult(result, text); // 원문을 같이 넘겨서 코드블록 증발을 방어합니다.
         if (!cleaned || cleaned.trim().length === 0) { catNotify(`${getThemeEmoji()} 번역 결과가 비어있습니다. 원문 유지.`, "warning"); return null; }
         await setCached(text, targetLang, cleaned, thought, getCacheModelKey(settings));
         return { text: cleaned, lang: targetLang, fromCache: false };
