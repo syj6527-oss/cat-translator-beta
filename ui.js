@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.5.0 - ui.js (디자인 튜닝 및 기능 복구본)
+// 🐱 Cat Translator v18.5.2 - ui.js (기능 100% 보존본)
 // ============================================================
 import { catNotify, catNotifyProgress, getThemeEmoji, getCompletionEmoji, getModelTheme, setTextareaValue } from './utils.js';
 import { getStats, clearAllCache, exportSettings, importSettings, getHistory, togglePin } from './cache.js';
@@ -21,11 +21,11 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     
     const dictIcon = (settings.dictionary && settings.dictionary.trim()) ? '📬' : '📭';
 
-    // 🚨 디자인 튜닝: 토큰, 문맥범위 placeholder 추가 및 반갈죽 버튼
+    // 🚨 디자인 튜닝: 토큰, MAX 8192, MAX 4, 캐시/초기화 반갈죽 적용
     const html = `
     <div id="cat-trans-container" class="inline-drawer">
         <div id="cat-drawer-header" class="inline-drawer-header interactable" tabindex="0">
-            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>트랜스레이터 Beta v18.5.0</span></div>
+            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>트랜스레이터 Beta v18.5.2</span></div>
             <i id="cat-drawer-toggle" class="inline-drawer-toggle fa-solid fa-chevron-down"></i>
         </div>
         <div id="cat-drawer-content" class="inline-drawer-content" style="display:none; padding:10px;">
@@ -47,22 +47,24 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
                 </div>
             </div>
             <div class="cat-setting-row"><label>자동 모드</label><select id="ct-auto-mode" class="text_pole"><option value="none">꺼짐</option><option value="input">입력만</option><option value="output">출력만</option><option value="both">둘 다</option></select></div>
-            <div class="cat-setting-row"><label>목표 언어</label><select id="ct-lang" class="text_pole">${langOptions}</select></div>
+            <div class="cat-setting-row"><label>목표 언어 (AI 기본)</label><select id="ct-lang" class="text_pole">${langOptions}</select></div>
             <div style="display:flex; gap:8px;">
                 <div class="cat-setting-row" style="flex:1;"><label>스타일</label><select id="ct-style" class="text_pole">${styleOptions}</select></div>
                 <div class="cat-setting-row" style="width:80px;"><label>온도</label><input type="number" id="ct-temperature" class="text_pole" value="${settings.temperature || 0.3}" min="0" max="1" step="0.1"></div>
             </div>
             <div style="display:flex; gap:8px;">
-                <div class="cat-setting-row" style="flex:1;"><label>토큰</label><input type="number" id="ct-max-tokens" class="text_pole" value="${settings.maxTokens || 8192}" placeholder="MAX 8192"></div>
-                <div class="cat-setting-row" style="width:100px;"><label>문맥 범위</label><input type="number" id="ct-context-range" class="text_pole" value="${settings.contextRange || 1}" min="0" max="4" placeholder="MAX 4"></div>
+                <div class="cat-setting-row" style="flex:1;"><label>토큰</label><input type="number" id="ct-max-tokens" class="text_pole" value="${settings.maxTokens || 8192}" min="256" max="65536" step="256" placeholder="MAX 8192"></div>
+                <div class="cat-setting-row" style="width:100px;"><label>문맥 범위</label><input type="number" id="ct-context-range" class="text_pole" value="${settings.contextRange || 1}" min="0" max="4" step="1" placeholder="MAX 4"></div>
             </div>
             <div class="cat-setting-row"><label>시스템 보호막 (🔒 고정)</label><textarea id="ct-shield" class="text_pole cat-readonly-area" rows="3" readonly>${SYSTEM_SHIELD}</textarea></div>
-            <div class="cat-setting-row"><label>추가 지시사항</label><textarea id="ct-user-prompt" class="text_pole" rows="3">${settings.userPrompt || ''}</textarea></div>
+            <div class="cat-setting-row"><label>추가 지시사항 (사용자 정의)</label><textarea id="ct-user-prompt" class="text_pole" rows="3" placeholder="번역 스타일, 상황극 설정 등 자유롭게 입력">${settings.userPrompt || ''}</textarea></div>
             <div class="cat-setting-row">
-                <label>사전 (원문 = 번역어) <span id="ct-dict-reset" style="float:right; cursor:pointer;">${dictIcon}</span></label>
-                <textarea id="ct-dictionary" class="text_pole" rows="3">${settings.dictionary || ''}</textarea>
+                <label>사전 (원문 = 번역어) 
+                    <span id="ct-dict-reset" style="float:right; cursor:pointer; font-size:1.4em; transition:0.2s;" title="사전 지우기 (우편함 비우기)">${dictIcon}</span>
+                </label>
+                <textarea id="ct-dictionary" class="text_pole" rows="3" placeholder="Ghost=고스트&#10;Soap=소프">${settings.dictionary || ''}</textarea>
             </div>
-            <div id="ct-cache-stats" class="cat-stats-bar"><span id="ct-cache-icon">🗂️</span> 캐시 히트율: ${statsData.hitRate}% | 절약 토큰: ~${statsData.tokensSaved.toLocaleString()}</div>
+            <div id="ct-cache-stats" class="cat-stats-bar"><span id="ct-cache-icon" style="font-size:1.3em;">🗂️</span> 캐시 히트율: ${statsData.hitRate}% | 절약 토큰: ~${statsData.tokensSaved.toLocaleString()}</div>
             
             <div style="display:flex; gap:8px; margin-top:8px;">
                 <button id="ct-clear-cache" class="menu_button cat-btn-secondary" style="flex:1;">🗑️ 캐시 삭제</button>
@@ -77,7 +79,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
 
     $('#extensions_settings').append(html);
 
-    // 🚨 🐟 / 🍖 자동 저장 알림
+    // 🚨 테마별 동적 자동 저장 알림
     const triggerAutoSave = (silent = false) => {
         saveSettingsFn();
         if (!silent) catNotify(`${getCompletionEmoji()} 설정이 자동 저장되었습니다.`, "success");
@@ -86,36 +88,53 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     $('#cat-drawer-header').on('click', (e) => { e.stopPropagation(); $('#cat-drawer-content').slideToggle(200); $('#cat-drawer-toggle').toggleClass('fa-chevron-down fa-chevron-up'); });
     $('#ct-key-toggle').on('click', () => { const i = $('#ct-key'); i.attr('type', i.attr('type') === 'password' ? 'text' : 'password'); });
     
-    $('#ct-profile, #ct-model').on('change', function () { 
-        const val = $(this).val(); $('#ct-model-custom').toggle(val === 'custom');
+    $('#ct-model').val(settings.directModel).on('change', function () { 
+        const val = $(this).val(); $('#ct-model-custom').toggle(val === 'custom'); 
+        if (val !== 'custom') applyTheme(getModelTheme(val), true);
+        triggerAutoSave(true);
+    });
+    $('#ct-model-custom').val(settings.customModelName || '').on('input', function () { applyTheme(getModelTheme($(this).val()), true); });
+    
+    $('#ct-profile').val(settings.profile).on('change', function () {
+        settings.profile = $(this).val();
+        $('#ct-direct-settings').toggle(settings.profile === '');
         const pn = $(this).find('option:selected').text().toLowerCase();
-        applyTheme((pn.includes('pro') || pn.includes('tiger')) ? 'tiger' : 'cat', true);
-        triggerAutoSave(true); 
+        if (pn.includes('pro') || pn.includes('프로') || pn.includes('tiger') || pn.includes('호랑이')) applyTheme('tiger', true);
+        else if (pn.includes('flash') || pn.includes('플래') || pn.includes('플레') || pn.includes('cat') || pn.includes('고양이')) applyTheme('cat', true);
+        else if (settings.profile === '') applyTheme(getModelTheme(settings.directModel), true);
+        else applyTheme('cat', true);
+        triggerAutoSave(true);
     });
 
-    $('#ct-auto-mode, #ct-lang, #ct-style, #ct-temperature').on('change', () => triggerAutoSave(false));
-    $('#ct-max-tokens, #ct-context-range, #ct-dictionary, #ct-user-prompt, #ct-key').on('blur', () => triggerAutoSave(false));
+    $('#ct-style').val(settings.style || 'normal').on('change', function () { const preset = STYLE_PRESETS[$(this).val()]; if (preset) $('#ct-temperature').val(preset.temperature); triggerAutoSave(false); });
+    $('#ct-auto-mode').val(settings.autoMode); $('#ct-lang').val(settings.targetLang); $('#ct-temperature').val(settings.temperature || 0.3);
     
+    $('#ct-auto-mode, #ct-lang, #ct-temperature').on('change', () => triggerAutoSave(false));
+    $('#ct-max-tokens, #ct-context-range, #ct-user-prompt, #ct-key').on('blur', () => triggerAutoSave(false));
+
+    $('#ct-dictionary').on('input', function () {
+        settings.dictionary = $(this).val();
+        $('#ct-dict-reset').text(settings.dictionary.trim() ? '📬' : '📭');
+    }).on('blur', () => triggerAutoSave(false));
+
     $('#ct-dict-reset').on('click', async function() {
         if (!confirm("사전을 비우시겠습니까?")) return;
-        $('#ct-dictionary').val(''); settings.dictionary = ''; triggerAutoSave(false);
-        $(this).text('📭'); catNotify("📭 사전 비우기 완료!", "success");
+        $('#ct-dictionary').val(''); settings.dictionary = ''; saveSettingsFn();
+        $(this).text('📭'); catNotify(`${getThemeEmoji()} 📭 우편함 비우기 완료!`, "success");
     });
     
-    $('#ct-clear-cache').on('click', async () => { 
-        if (confirm("정말 번역 캐시를 전부 삭제하시겠습니까?")) { 
-            await clearAllCache(); updateCacheStats(); catNotify("🗑️ 캐시 삭제 완료!", "success"); 
-        } 
-    });
-    $('#ct-reset-settings').on('click', () => { 
-        if (confirm("설정을 초기화하시겠습니까?\n(🚨 안심하세요! 사전과 API 키는 유지됩니다)")) { 
-            saveSettingsFn(true); catNotify("🔄 설정 초기화 완료!", "success"); setTimeout(() => location.reload(), 500); 
-        } 
-    });
+    $('#ct-clear-cache').on('click', async () => { if (confirm("정말 번역 캐시를 전부 삭제하시겠습니까?")) { await clearAllCache(); updateCacheStats(); catNotify(`${getThemeEmoji()} 캐시 전체 삭제 완료! 📂`, "success"); } });
+    $('#ct-reset-settings').on('click', () => { if (confirm("설정을 초기화하시겠습니까?\n(🚨 안심하세요! 사전과 API 키는 유지됩니다)")) { saveSettingsFn(true); catNotify("🔄 설정 초기화 완료!", "success"); setTimeout(() => location.reload(), 500); } });
 
-    $('#ct-export').on('click', () => { saveSettingsFn(); exportSettings(settings); });
+    $('#ct-export').on('click', () => { saveSettingsFn(); exportSettings(settings); catNotify(`${getThemeEmoji()} 설정 내보내기 완료!`, "success"); });
     $('#ct-import-btn').on('click', () => $('#ct-import-file').click());
-    $('#ct-import-file').on('change', async function () { const f = this.files[0]; if (!f) return; try { const imp = await importSettings(f); Object.assign(settings, imp); saveSettingsFn(); location.reload(); } catch (e) { catNotify(`오류: ${e.message}`, "error"); } });
+    $('#ct-import-file').on('change', async function () { const file = this.files[0]; if (!file) return; try { const imported = await importSettings(file); Object.assign(settings, imported); saveSettingsFn(); catNotify(`${getThemeEmoji()} 설정 가져오기 완료! 새로고침하면 적용됩니다.`, "success"); } catch (e) { catNotify(`${getThemeEmoji()} 오류: ${e.message}`, "error"); } this.value = ''; });
+    
+    const initialProfileName = ($('#ct-profile option:selected').text() || '').toLowerCase();
+    const initialModel = (settings.directModel || '').toLowerCase();
+    const allNames = initialProfileName + ' ' + initialModel;
+    if (allNames.includes('pro') || allNames.includes('프로') || allNames.includes('호랑이') || allNames.includes('tiger')) applyTheme('tiger');
+    else applyTheme('cat');
 }
 
 export function collectSettings() {
@@ -131,48 +150,59 @@ export function collectSettings() {
     };
 }
 export function updateCacheStats() {
-    const s = getStats(); const icon = s.hits > 0 ? '🗂️' : '📂';
+    const s = getStats();
+    const icon = s.hits > 0 ? '🗂️' : '📂';
     $('#ct-cache-icon').text(icon);
-    $('#ct-cache-stats').html(`<span id="ct-cache-icon">${icon}</span> 캐시 히트율: ${s.hitRate}% | 절약 토큰: ~${s.tokensSaved.toLocaleString()}`);
+    $('#ct-cache-stats').html(`<span id="ct-cache-icon" style="font-size:1.3em;">${icon}</span> 캐시 히트율: ${s.hitRate}% | 절약 토큰: ~${s.tokensSaved.toLocaleString()}`);
 }
+let _lastAppliedTheme = null;
 export function applyTheme(theme, notify = false) {
     document.body.setAttribute('data-cat-theme', theme); const emoji = theme === 'tiger' ? '🐯' : '🐱';
-    $('.cat-theme-emoji, .cat-mes-trans-btn .cat-emoji-icon, #cat-input-btn .cat-emoji-icon').text(emoji);
-    if (notify) catNotify(theme === 'tiger' ? '🐯 어흥! 호랑이 모드!' : '🐱 야옹~ 고양이 모드!', 'success');
+    $('.cat-theme-emoji').text(emoji); $('.cat-mes-trans-btn .cat-emoji-icon').text(emoji); $('#cat-input-btn .cat-emoji-icon').text(emoji);
+    if (notify) {
+        if (theme === 'tiger') catNotify('🐯 어흥! 호랑이 모드 활성화!', 'success'); else catNotify('🐱 야옹~ 고양이 모드 활성화!', 'success');
+    }
+    _lastAppliedTheme = theme;
 }
 
 export function injectInputButtons(settings, stContext, processMessageFn) {
-    if ($('#cat-input-btn-group').length > 0) return;
-    const target = $('#send_but'); 
-    if (!target.length) return; // 🚨 ChatGPT 권장 null 방어
-
-    const emoji = getThemeEmoji();
+    if ($('#cat-input-btn-group').length > 0) { const icon = $('#cat-input-btn .cat-emoji-icon'); if (isTranslatingInput) icon.addClass('cat-glow-anim'); else icon.removeClass('cat-glow-anim'); return; }
+    const target = $('#send_but'); if (target.length === 0) return;
+    
+    // 🚨 디자인 튜닝: 그룹으로 묶되 style.css에서 겹침 방지 처리됨
     const group = $('<div id="cat-input-btn-group" class="cat-input-btn-group"></div>');
+    const emoji = getThemeEmoji();
     const transBtn = $(`<div id="cat-input-btn" title="번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">${emoji}</span></div>`);
     const revertBtn = $(`<div id="cat-input-revert" title="되돌리기" class="cat-input-icon interactable"><i class="fa-solid fa-rotate-left"></i></div>`);
     const bulkBtn = $(`<div id="cat-bulk-btn" title="전체 번역" class="cat-input-icon interactable"><span class="cat-emoji-icon">⚡</span></div>`);
-    group.append(transBtn, revertBtn, bulkBtn);
+    
+    group.append(transBtn).append(revertBtn).append(bulkBtn);
     target.before(group);
 
     transBtn.on('click', async (e) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const sendArea = $('#send_textarea'); const currentText = sendArea.val().trim();
-        if (!currentText) return;
-        const lastTranslated = sendArea.data('cat-last-translated'); const originalText = sendArea.data('cat-original-text'); const isRetry = (lastTranslated && currentText === lastTranslated);
-        const textToTranslate = isRetry ? originalText : currentText;
-        catNotify(isRetry ? `${getThemeEmoji()} 재번역 중...` : `${getThemeEmoji()} 번역 진행 중...`, "success");
-        
-        const contextRange = parseInt(settings.contextRange) || 1; const lastMsgId = stContext.chat.length - 1;
-        const contextMsgs = gatherContextMessages(lastMsgId + 1, stContext, contextRange);
-        const result = await fetchTranslation(textToTranslate, settings, stContext, { prevTranslation: isRetry ? currentText : null, contextMessages: contextMsgs });
-        if (result && result.text && result.text !== currentText) {
-            sendArea.data('cat-original-text', textToTranslate); sendArea.data('cat-last-translated', result.text); sendArea.data('cat-last-target-lang', result.lang);
-            setTextareaValue(sendArea[0], result.text);
-            catNotify(`${getCompletionEmoji()} 입력창 번역 완료!`, "success");
-        }
+        if (isTranslatingInput || !currentText) return;
+        isTranslatingInput = true; transBtn.find('.cat-emoji-icon').addClass('cat-glow-anim');
+        try {
+            const lastTranslated = sendArea.data('cat-last-translated'); const originalText = sendArea.data('cat-original-text'); const lastTargetLang = sendArea.data('cat-last-target-lang');
+            const isRetry = (lastTranslated && currentText === lastTranslated);
+            const textToTranslate = isRetry ? originalText : currentText; const forceLang = null; const prevTrans = isRetry ? currentText : null;
+            
+            catNotify(isRetry ? `${getThemeEmoji()} 입력창 재번역 중...` : `${getThemeEmoji()} 번역 진행 중...`, "success");
+            
+            const contextRange = parseInt(settings.contextRange) || 1; const lastMsgId = stContext.chat.length - 1;
+            const contextMsgs = gatherContextMessages(lastMsgId + 1, stContext, contextRange);
+            const result = await fetchTranslation(textToTranslate, settings, stContext, { forceLang, prevTranslation: prevTrans, contextMessages: contextMsgs });
+            if (result && result.text && result.text !== currentText) {
+                sendArea.data('cat-original-text', textToTranslate); sendArea.data('cat-last-translated', result.text); sendArea.data('cat-last-target-lang', result.lang);
+                setTextareaValue(sendArea[0], result.text);
+                catNotify(`${getCompletionEmoji()} 입력창 번역 완료!`, "success");
+            }
+        } finally { isTranslatingInput = false; transBtn.find('.cat-emoji-icon').removeClass('cat-glow-anim'); }
     });
-    revertBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); const sendArea = $('#send_textarea'); const originalText = sendArea.data('cat-original-text'); if (originalText) { setTextareaValue(sendArea[0], originalText); sendArea.removeData('cat-original-text').removeData('cat-last-translated'); catNotify(`${getThemeEmoji()} 원문 복구 완료!`, "success"); } });
-    bulkBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
+    revertBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); const sendArea = $('#send_textarea'); const originalText = sendArea.data('cat-original-text'); if (originalText) { setTextareaValue(sendArea[0], originalText); sendArea.removeData('cat-original-text').removeData('cat-last-translated'); catNotify(`${getThemeEmoji()} 원문 복구 완료!`, "success"); } });
+    bulkBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
 }
 
 export function injectMessageButtons(processMessageFn, revertMessageFn) {
@@ -188,7 +218,7 @@ export function injectMessageButtons(processMessageFn, revertMessageFn) {
     }
 }
 
-// 🚨 디자인 튜닝: 벌크 번역 동물 아이콘 적용 및 모바일 팝업 위치 고정
+// 🚨 디자인 튜닝: 벌크 동물 아이콘 및 팝업 모바일 최적 위치
 function showBulkPopup(event, settings, stContext, processMessageFn) {
     $('.cat-bulk-popup').remove();
     $(document).off('click.catBulkClose touchstart.catBulkClose');
@@ -204,33 +234,49 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
     
     const btn = document.getElementById('cat-bulk-btn');
     if (!btn) return;
+    
+    $('body').append(popup);
     const rect = btn.getBoundingClientRect();
     const topPos = rect.top > 300 ? (rect.top - 240) : (rect.bottom + 10);
     popup.css({ position: 'fixed', top: topPos + 'px', left: Math.max(10, rect.left - 40) + 'px', zIndex: 2147483647 });
     
-    $('body').append(popup);
-    let _bulkJustOpened = true; setTimeout(() => { _bulkJustOpened = false; }, 300);
+    let _bulkJustOpened = true;
+    setTimeout(() => { _bulkJustOpened = false; }, 300);
+    
     popup.on('touchstart click', (e) => { e.stopPropagation(); });
     
     popup.find('.cat-bulk-option').on('click touchend', async function (e) {
         e.preventDefault(); e.stopPropagation();
-        const count = $(this).data('count'); popup.remove(); $(document).off('click.catBulkClose touchstart.catBulkClose');
-        let finalCount = count;
-        if (count === 'custom') {
-            const userInput = prompt("몇 개 번역할까요?", "5");
-            if (!userInput || isNaN(userInput)) return; 
+        const countData = $(this).data('count');
+        popup.remove();
+        $(document).off('click.catBulkClose touchstart.catBulkClose');
+        
+        let finalCount = countData;
+        if (countData === 'custom') {
+            const userInput = prompt("몇 개의 메시지를 번역할까요?", "5");
+            if (!userInput || isNaN(userInput)) return;
             finalCount = parseInt(userInput);
         }
         await executeBulkTranslation(finalCount, settings, stContext, processMessageFn);
     });
-    setTimeout(() => { $(document).on('click.catBulkClose touchstart.catBulkClose', (e) => { if (_bulkJustOpened) return; if (!$(e.target).closest('.cat-bulk-popup, #cat-bulk-btn').length) { popup.remove(); $(document).off('click.catBulkClose touchstart.catBulkClose'); } }); }, 300);
+    
+    setTimeout(() => {
+        $(document).on('click.catBulkClose touchstart.catBulkClose', (e) => {
+            if (_bulkJustOpened) return;
+            if (!$(e.target).closest('.cat-bulk-popup, #cat-bulk-btn').length) {
+                popup.remove();
+                $(document).off('click.catBulkClose touchstart.catBulkClose');
+            }
+        });
+    }, 300);
 }
 
 async function executeBulkTranslation(count, settings, stContext, processMessageFn) {
     const allMes = $('.mes'); let targets = []; let originalCount = 0;
     if (count === 'all') { allMes.each(function () { targets.push($(this)); }); } else { const num = parseInt(count); const start = Math.max(0, allMes.length - num); allMes.slice(start).each(function () { targets.push($(this)); }); }
     originalCount = targets.length;
-    // 중복 방지 마커 확인
+    
+    // 🚨 무한 루프 방지: data-cat-translated 확인
     targets = targets.filter(el => { const msgId = parseInt(el.attr('mesid'), 10); const msg = stContext.chat[msgId]; return msg && !msg.extra?.display_text && el.attr('data-cat-translated') !== 'true'; });
     const skipped = originalCount - targets.length;
     if (targets.length === 0) { catNotify(`${getThemeEmoji()} 번역할 메시지가 없습니다. (${skipped}개 이미 번역됨)`, "warning"); return; }
@@ -240,22 +286,22 @@ async function executeBulkTranslation(count, settings, stContext, processMessage
     const abortHandler = () => { if (bulkAbortController) bulkAbortController.abort(); };
     $('#cat-bulk-btn').off('click').on('click', (e) => { e.preventDefault(); abortHandler(); });
 
-    const progressEl = catNotifyProgress(`${getThemeEmoji()} 벌크 번역 중... (0/${total})`, abortHandler);
+    const progressEl = catNotifyProgress(`${getThemeEmoji()} 벌크 번역 중... (0/${total}) [클릭시 중단]`, abortHandler);
     for (const el of targets) {
         if (bulkAbortController.signal.aborted) break;
         const msgId = el.attr('mesid'); const isUser = el.hasClass('mes_user');
         await processMessageFn(msgId, isUser, bulkAbortController.signal, true);
         completed++;
-        if (progressEl.length) progressEl.text(`${getThemeEmoji()} 벌크 번역 중... (${completed}/${total})`);
+        if (progressEl.length) progressEl.text(`${getThemeEmoji()} 벌크 번역 중... (${completed}/${total}) [클릭시 중단]`);
         if (!bulkAbortController.signal.aborted) await new Promise(r => setTimeout(r, 700));
     }
     progressEl.remove(); $('#cat-bulk-btn').html('<span class="cat-emoji-icon">⚡</span>');
     $('#cat-bulk-btn').off('click').on('click', (e) => { e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
-    if (bulkAbortController.signal.aborted) catNotify(`🔴 번역 중단됨 (${completed}개 완료)`, "error"); else catNotify(`${getCompletionEmoji()} 벌크 완료! ${completed}개 번역`, "success");
+    if (bulkAbortController.signal.aborted) catNotify(`🔴 번역 중단됨 (${completed}개 완료)`, "error"); else catNotify(`${getCompletionEmoji()} 벌크 완료! ${completed}개 번역${skipped > 0 ? ', ' + skipped + '개 스킵' : ''}`, "success");
     bulkAbortController = null;
 }
 
-// 🚨 누락되었던 히스토리 팝업 복구
+// 🚨 마스터 원본 유지: 히스토리 팝업 기능 완전 보존
 export async function showHistoryPopup(originalText, targetLang, anchorEl, onSelect, modelKey = 'default') {
     $('.cat-history-popup').remove();
     const history = await getHistory(originalText, targetLang, modelKey);
@@ -269,25 +315,49 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
     items += `<div class="cat-history-item cat-history-new">🔄 새로 번역</div>`;
 
     const popup = $(`<div class="cat-history-popup">${items}</div>`);
+    
     const rect = anchorEl[0].getBoundingClientRect();
-    const popupWidth = 280; let leftPos = rect.left;
-    if (leftPos + popupWidth > window.innerWidth - 8) leftPos = window.innerWidth - popupWidth - 8;
+    const popupWidth = 280;
+    let leftPos = rect.left;
+    
+    if (leftPos + popupWidth > window.innerWidth - 8) {
+        leftPos = window.innerWidth - popupWidth - 8;
+    }
     leftPos = Math.max(8, leftPos);
     
     const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow > 200) popup.css({ position: 'fixed', top: (rect.bottom + 4) + 'px', left: leftPos + 'px', zIndex: 2147483647 });
-    else popup.css({ position: 'fixed', bottom: (window.innerHeight - rect.top + 4) + 'px', left: leftPos + 'px', zIndex: 2147483647 });
+    if (spaceBelow > 200) {
+        popup.css({ position: 'fixed', top: (rect.bottom + 4) + 'px', left: leftPos + 'px', zIndex: 2147483647 });
+    } else {
+        popup.css({ position: 'fixed', bottom: (window.innerHeight - rect.top + 4) + 'px', left: leftPos + 'px', zIndex: 2147483647 });
+    }
     
     $('body').append(popup);
+
     popup.find('.cat-history-text').on('click', function () { const text = decodeURIComponent($(this).data('text')); onSelect(text, false); popup.remove(); });
     popup.find('.cat-history-pin').on('click', async function (e) { e.stopPropagation(); const text = decodeURIComponent($(this).data('text')); await togglePin(originalText, targetLang, text, modelKey); popup.remove(); showHistoryPopup(originalText, targetLang, anchorEl, onSelect, modelKey); });
-    popup.find('.cat-history-new').on('click', () => { catNotify(`${getThemeEmoji()} 새로운 번역 생성 중...`, "success"); onSelect(null, true); popup.remove(); });
+    
+    let newTransBusy = false;
+    popup.find('.cat-history-new').on('click', () => {
+        if (newTransBusy) return;
+        newTransBusy = true;
+        catNotify(`${getThemeEmoji()} 새로운 번역 생성 중...`, "success");
+        onSelect(null, true);
+        popup.remove();
+    });
 
-    setTimeout(() => { $(document).on('click.catHistoryClose touchstart.catHistoryClose', (e) => { if (!$(e.target).closest('.cat-history-popup').length) { popup.remove(); $(document).off('click.catHistoryClose touchstart.catHistoryClose'); } }); }, 500);
+    setTimeout(() => {
+        $(document).on('click.catHistoryClose touchstart.catHistoryClose', (e) => {
+            if (!$(e.target).closest('.cat-history-popup').length) {
+                popup.remove();
+                $(document).off('click.catHistoryClose touchstart.catHistoryClose');
+            }
+        });
+    }, 500);
     return true;
 }
 
-// 🚨 누락되었던 드래그 사전 등록 기능 복구
+// 🚨 마스터 원본 유지: 드래그 사전 등록 기능 완전 보존
 export function setupDragDictionary(settings, saveSettingsFn) {
     let pawIcon = null; let _dragDebounce = null;
     const handleSelection = () => {
@@ -316,15 +386,27 @@ function showDragDictPopup(selectedText, rect, settings, saveSettingsFn) {
     $('body').append(popup); popup.find('.cat-drag-input').focus();
     const doRegister = () => {
         const transWord = popup.find('.cat-drag-input').val().trim(); if (!transWord) return;
+        const existingLines = (settings.dictionary || '').split('\n').filter(l => l.includes('='));
+        const isDuplicate = existingLines.some(line => {
+            const parts = line.split('=');
+            const orig = parts[0].trim().toLowerCase();
+            const trans = parts.slice(1).join('=').trim().toLowerCase();
+            return orig === selectedText.toLowerCase() && trans === transWord.toLowerCase();
+        });
+        if (isDuplicate) {
+            catNotify(`⚠️ "${selectedText}=${transWord}" 동일한 쌍이 이미 등록되어 있습니다!`, "warning");
+            popup.remove(); return;
+        }
         const newEntry = `${selectedText}=${transWord}`; const current = settings.dictionary || '';
         settings.dictionary = current ? `${current}\n${newEntry}` : newEntry; $('#ct-dictionary').val(settings.dictionary);
-        $('#ct-dict-reset').text('📬'); saveSettingsFn(); catNotify(`🐾 사전 등록 완료! ${selectedText} → ${transWord}`, "success"); popup.remove();
+        $('#ct-dict-reset').text('📬');
+        saveSettingsFn(); catNotify(`🐾 사전 등록 완료! ${selectedText} → ${transWord}`, "success"); popup.remove();
     };
     popup.find('.cat-drag-register').on('click', doRegister); popup.find('.cat-drag-input').on('keydown', (e) => { if (e.key === 'Enter') doRegister(); if (e.key === 'Escape') popup.remove(); }); popup.find('.cat-drag-cancel').on('click', () => popup.remove());
 }
 
 export function setupMutationObserver(processMessageFn, revertMessageFn, settings, stContext) {
-    const chatContainer = document.getElementById('chat'); if (!chatContainer) return;
+    const chatContainer = document.getElementById('chat'); if (!chatContainer) { setTimeout(() => setupMutationObserver(processMessageFn, revertMessageFn, settings, stContext), 500); return; }
     const observer = new MutationObserver((mutations) => { let needsButtonInjection = false; for (const mutation of mutations) { if (mutation.addedNodes.length > 0) { needsButtonInjection = true; break; } } if (needsButtonInjection) { injectMessageButtons(processMessageFn, revertMessageFn); injectInputButtons(settings, stContext, processMessageFn); } });
     observer.observe(chatContainer, { childList: true, subtree: true });
     injectMessageButtons(processMessageFn, revertMessageFn); injectInputButtons(settings, stContext, processMessageFn); setInterval(() => injectInputButtons(settings, stContext, processMessageFn), 2000);
