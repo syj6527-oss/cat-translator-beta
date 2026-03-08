@@ -19,7 +19,6 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     const styleOptions = Object.entries(STYLE_PRESETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
     const statsData = getStats();
     
-    // 🚨 마스터 튜닝: 우편함 아이콘 동적 판별
     const dictIcon = (settings.dictionary && settings.dictionary.trim()) ? '📬' : '📭';
 
     const html = `
@@ -84,16 +83,12 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         settings.profile = $(this).val();
         $('#ct-direct-settings').toggle(settings.profile === '');
         const pn = $(this).find('option:selected').text().toLowerCase();
-        // 프리셋 이름에서 pro/프로/tiger/호랑이 감지 → 🐯
         if (pn.includes('pro') || pn.includes('프로') || pn.includes('tiger') || pn.includes('호랑이')) {
             applyTheme('tiger', true);
-        // flash/플래/cat/고양이 감지 → 🐱
         } else if (pn.includes('flash') || pn.includes('플래') || pn.includes('플레') || pn.includes('cat') || pn.includes('고양이')) {
             applyTheme('cat', true);
-        // 직접 연결이면 모델명 기준
         } else if (settings.profile === '') {
             applyTheme(getModelTheme(settings.directModel), true);
-        // 아무것도 못 찾으면 기본 🐱
         } else {
             applyTheme('cat', true);
         }
@@ -101,7 +96,6 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     $('#ct-style').val(settings.style || 'normal').on('change', function () { const preset = STYLE_PRESETS[$(this).val()]; if (preset) $('#ct-temperature').val(preset.temperature); });
     $('#ct-auto-mode').val(settings.autoMode); $('#ct-lang').val(settings.targetLang); $('#ct-temperature').val(settings.temperature || 0.3);
     
-    // 🚨 마스터 튜닝: 동적 우편함 애니메이션 연결
     $('#ct-dictionary').on('input', function () {
         settings.dictionary = $(this).val();
         $('#ct-dict-reset').text(settings.dictionary.trim() ? '📬' : '📭');
@@ -120,7 +114,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     $('#ct-export').on('click', () => { saveSettingsFn(); exportSettings(settings); catNotify(`${getThemeEmoji()} 설정 내보내기 완료!`, "success"); });
     $('#ct-import-btn').on('click', () => $('#ct-import-file').click());
     $('#ct-import-file').on('change', async function () { const file = this.files[0]; if (!file) return; try { const imported = await importSettings(file); Object.assign(settings, imported); saveSettingsFn(); catNotify(`${getThemeEmoji()} 설정 가져오기 완료! 새로고침하면 적용됩니다.`, "success"); } catch (e) { catNotify(`${getThemeEmoji()} 오류: ${e.message}`, "error"); } this.value = ''; });
-    // 초기 테마 적용: 프리셋 이름 또는 모델명에서 감지
+    
     const initialProfileName = ($('#ct-profile option:selected').text() || '').toLowerCase();
     const initialModel = (settings.directModel || '').toLowerCase();
     const allNames = initialProfileName + ' ' + initialModel;
@@ -208,7 +202,6 @@ export function injectMessageButtons(processMessageFn, revertMessageFn) {
 }
 
 function showBulkPopup(event, settings, stContext, processMessageFn) {
-    // 기존 팝업 제거
     $('.cat-bulk-popup').remove();
     $(document).off('click.catBulkClose touchstart.catBulkClose');
     
@@ -222,25 +215,23 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
     const btn = document.getElementById('cat-bulk-btn');
     if (!btn) return;
     
-    // [버그 수정 2] 먼저 DOM에 붙인 후, 위치 계산
     $('body').append(popup);
     const rect = btn.getBoundingClientRect();
     
+    // 번개 아이콘 바로 위에 절대 좌표로 고정
     popup.css({ 
         position: 'fixed', 
-        bottom: Math.max(70, window.innerHeight - rect.top + 10) + 'px', 
+        top: (rect.top - popup.outerHeight() - 10) + 'px', 
         left: Math.max(10, rect.left - 40) + 'px', 
         zIndex: 2147483647 
     });
     
-    // 즉시 닫힘 방지 플래그
+    // 터치 중복 방지 (무적 시간)
     let _bulkJustOpened = true;
-    setTimeout(() => { _bulkJustOpened = false; }, 100);
+    setTimeout(() => { _bulkJustOpened = false; }, 300);
     
-    // 팝업 자체에서 이벤트 전파 차단
     popup.on('touchstart click', (e) => { e.stopPropagation(); });
     
-    // 옵션 클릭
     popup.find('.cat-bulk-option').on('click touchend', async function (e) {
         e.preventDefault(); e.stopPropagation();
         const count = $(this).data('count');
@@ -249,7 +240,6 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
         await executeBulkTranslation(count, settings, stContext, processMessageFn);
     });
     
-    // 외부 클릭 닫기
     setTimeout(() => {
         $(document).on('click.catBulkClose touchstart.catBulkClose', (e) => {
             if (_bulkJustOpened) return;
@@ -258,7 +248,7 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
                 $(document).off('click.catBulkClose touchstart.catBulkClose');
             }
         });
-    }, 100);
+    }, 300);
 }
 
 async function executeBulkTranslation(count, settings, stContext, processMessageFn) {
@@ -303,18 +293,15 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
 
     const popup = $(`<div class="cat-history-popup">${items}</div>`);
     
-    // 스마트 위치: 화면 밖으로 안 나가게
     const rect = anchorEl[0].getBoundingClientRect();
     const popupWidth = 280;
     let leftPos = rect.left;
     
-    // 오른쪽으로 넘치면 왼쪽으로 밀기 (페르소나/유저 메시지 대응)
     if (leftPos + popupWidth > window.innerWidth - 8) {
         leftPos = window.innerWidth - popupWidth - 8;
     }
     leftPos = Math.max(8, leftPos);
     
-    // 아래 공간 부족하면 위로
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceBelow > 200) {
         popup.css({ position: 'fixed', top: (rect.bottom + 4) + 'px', left: leftPos + 'px', zIndex: 2147483647 });
@@ -331,7 +318,6 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
     popup.find('.cat-history-new').on('click', () => {
         if (newTransBusy) return;
         newTransBusy = true;
-        // 🚨 마스터 튜닝: 새로 번역 누르면 토스트 알람 띄우기!
         catNotify(`${getThemeEmoji()} 새로운 번역 생성 중...`, "success");
         onSelect(null, true);
         popup.remove();
@@ -348,7 +334,6 @@ export async function showHistoryPopup(originalText, targetLang, anchorEl, onSel
     return true;
 }
 
-// (드래그 딕셔너리와 뮤테이션 옵저버는 기존과 동일하게 유지)
 export function setupDragDictionary(settings, saveSettingsFn) {
     let pawIcon = null; let _dragDebounce = null;
     const handleSelection = () => {
@@ -377,7 +362,6 @@ function showDragDictPopup(selectedText, rect, settings, saveSettingsFn) {
     $('body').append(popup); popup.find('.cat-drag-input').focus();
     const doRegister = () => {
         const transWord = popup.find('.cat-drag-input').val().trim(); if (!transWord) return;
-        // 사전 중복 체크 (원문+번역어 쌍이 완전히 같을 때만 차단, 같은 원문 다른 뜻은 허용)
         const existingLines = (settings.dictionary || '').split('\n').filter(l => l.includes('='));
         const isDuplicate = existingLines.some(line => {
             const parts = line.split('=');
