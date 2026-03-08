@@ -59,21 +59,30 @@ export function catNotifyProgress(message, onAbort) {
     return el;
 }
 
-// 🚨 마스터 요청: 코드블록 내부 텍스트 및 YAML 들여쓰기 증발 완벽 방어!
-export function cleanResult(text, originalText = "") {
+// 🚨 정밀 클리너: AI가 추가한 래핑만 제거, 원본 코드블록/YAML 보존!
+export function cleanResult(text) {
     if (!text) return "";
     
+    // AI가 앞에 붙이는 "번역:" 등 접두어 제거
     let cleaned = text.replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "");
     
-    // 원본 텍스트에 백틱(```)이 포함되어 있었는지 확인합니다.
-    const originalHasCodeBlock = /^```[\s\S]*```$/.test(originalText.trim());
-    const wholeCodeBlockMatch = cleaned.match(/^```[a-z]*\n([\s\S]*?)\n```$/i);
-    
-    // 원문에 백틱이 없었는데 AI가 멋대로 씌운 경우에만 껍데기를 벗겨냅니다.
-    if (wholeCodeBlockMatch && !originalHasCodeBlock) {
-        cleaned = wholeCodeBlockMatch[1];
+    // AI가 응답 전체를 코드블록으로 감싼 경우만 벗기기
+    // 단, 내부에 코드블록이 있으면(원본 코드블록) 건드리지 않음
+    const wholeCodeBlockMatch = cleaned.match(/^```[a-z]*\n([\s\S]*?)\n```\s*$/i);
+    if (wholeCodeBlockMatch) {
+        const inner = wholeCodeBlockMatch[1];
+        // 내부에 ``` 가 없으면 = AI가 래핑한 것 → 벗기기
+        // 내부에 ``` 가 있으면 = 원본 코드블록 포함 → 건드리지 않음
+        if (!inner.includes('```')) {
+            cleaned = inner;
+        }
     }
-
+    
+    // 줄바꿈 정리 (원본 구조 보존하면서)
+    cleaned = cleaned
+        .replace(/\r\n/g, "\n")        // \r\n → \n 통일
+        .replace(/\n{4,}/g, "\n\n\n"); // 빈줄 4개 이상만 정리 (3개까지는 유지)
+    
     return cleaned.trim();
 }
 

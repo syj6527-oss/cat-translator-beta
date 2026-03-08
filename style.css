@@ -28,8 +28,9 @@
 .cat-btn-secondary { font-size: 0.95em; padding: 8px 12px; border-radius: 6px; }
 
 /* 🚨 마스터 튜닝: 발바닥 정중앙 영구 고정 */
-.cat-paw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.1em; z-index: 1; user-select: none; transition: transform 0.2s; }
-.cat-paw-toggle:hover { transform: translateY(-50%) scale(1.2); }
+.cat-paw-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.5em; z-index: 1; user-select: none; transition: transform 0.2s; padding: 8px; line-height: 1; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.cat-paw-toggle:hover { transform: translateY(-50%) scale(1.15); }
+.cat-paw-toggle:active { transform: translateY(-50%) scale(0.95); opacity: 0.7; }
 
 .cat-emoji-icon { display: inline-block; line-height: 1; transition: all 0.2s; will-change: transform, filter; transform: translateZ(0); -webkit-backface-visibility: hidden; }
 .cat-glow-anim { animation: cat-glow-pulse 1.2s infinite alternate ease-in-out !important; border-radius: 50%; }
