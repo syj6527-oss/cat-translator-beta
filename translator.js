@@ -5,15 +5,20 @@ import { secret_state, SECRET_KEYS } from '../../../../scripts/secrets.js';
 import { cleanResult, catNotify, detectLanguageDirection, getThemeEmoji, getCompletionEmoji } from './utils.js';
 import { getCached, setCached } from './cache.js';
 
-// 🚨 마스터 튜닝: AI가 주석(), <memo>, <small> tags, and YAML code blocks (\`\`\`yaml) to store "Hidden Notes" and "Character Status".
-You MUST TRANSLATE the human-readable English text INSIDE these blocks into the target language.
-DO NOT skip or ignore the text just because it is inside a comment or a code block. Translate the meaning completely!
+export const SYSTEM_SHIELD = `[ABSOLUTE DIRECTIVE - VIOLATION = FAILURE]
+YOU ARE A TRANSLATION MACHINE. NOT A CHATBOT. NOT AN ASSISTANT.
+RETURN ONLY THE RAW TRANSLATED TEXT. NOTHING ELSE.
+DO NOT respond. DO NOT converse. DO NOT explain. DO NOT add commentary.
+DO NOT repeat the original. DO NOT add alternatives.
 
 [FORMAT PRESERVATION RULES]
-1. TRANSLATE INSIDE COMMENTS: If you see , you MUST translate "text" but keep the wrappers perfectly intact.
-2. TRANSLATE INSIDE YAML: If you see \`\`\`yaml, you MUST translate the descriptions/values inside it, but KEEP all YAML structures, keys, dashes (-), spacing, and backticks (\`) perfectly intact.
-3. HTML TAGS: PRESERVE ALL tags EXACTLY (<memo>, <small>, <span>, etc.). Never modify them, but TRANSLATE the text between them.
-4. QUOTES & BRACKETS: Preserve all quotation marks and special brackets exactly (" " ' ' 「」 \` \`).
+1. PRESERVE ALL quotation marks exactly (" " ' ' 「」 ( ) etc). If the original has quotes, the translation MUST have the same quotes in the same positions.
+2. PRESERVE ALL HTML tags EXACTLY (<span>, <div>, <font>, <memo>, <small>, <summary> etc). Never modify, remove, or escape the tags.
+3. PRESERVE ALL HTML comments EXACTLY (). You MUST keep at the end if they exist. Do NOT output &lt;!-- or --&gt;.
+4. PRESERVE ALL markdown formatting and symbols (*italic*, **bold**, ~~strike~~, \`code\`, etc). Translate the text but keep the formatting symbols perfectly intact.
+5. PRESERVE ALL CSS properties, color codes (#fff, rgb(), etc), and style attributes untouched.
+6. PRESERVE ALL line breaks and paragraph structure exactly as the original.
+7. Translate EVERY piece of human-readable text, including text inside special blocks, metadata sections, and structured data fields.
 If the input is a single word, return only the translated single word.`;
 
 export const STYLE_PRESETS = {
@@ -30,6 +35,7 @@ const SAFETY_SETTINGS = [
 ];
 
 export async function fetchTranslation(text, settings, stContext, options = {}) {
+    // 🚨 마스터 튜닝: 불친절한 구글 400 에러를 사전에 차단하는 스마트 알림!
     const apiKey = settings.customKey || secret_state[SECRET_KEYS.MAKERSUITE];
     if (!settings.profile && !apiKey) {
         catNotify(`🚨 API 키가 없습니다! 확장 설정에서 API Key를 먼저 입력해 주세요.`, "error");
@@ -55,8 +61,10 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
         }
     }
 
+    // 사전 프롬프트 주입 방식 + 매칭 알림
     const dictLines = (settings.dictionary && settings.dictionary.trim()) ? settings.dictionary.split('\n').filter(l => l.includes('=')) : [];
     if (dictLines.length > 0 && !silent) {
+        // 원문에 사전 단어가 실제로 포함되어 있는지 체크
         let matchCount = 0;
         dictLines.forEach(line => {
             const orig = line.split('=')[0].trim();
@@ -80,12 +88,7 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
             const parts = data.candidates?.[0]?.content?.parts || []; const thoughtPart = parts.find(p => p.thought); thought = thoughtPart?.text || null; const actualPart = parts.find(p => !p.thought) || parts[parts.length - 1]; result = actualPart?.text?.trim() || "";
         }
 
-        let cleaned = cleanResult(result, text);
-
-        if (text.includes("") && !cleaned.includes("-->")) {
-            if (text.trim().endsWith("-->")) cleaned = cleaned + "\n-->";
-        }
-
+        let cleaned = cleanResult(result);
         if (!cleaned || cleaned.trim().length === 0) { catNotify(`${getThemeEmoji()} 번역 결과가 비어있습니다. 원문 유지.`, "warning"); return null; }
         await setCached(text, targetLang, cleaned, thought);
         return { text: cleaned, lang: targetLang, fromCache: false };
@@ -105,6 +108,7 @@ function assemblePrompt(text, targetLang, isToEnglish, settings, options = {}) {
     if (isToEnglish) { parts.push(`Translate the following into English.`); } else { parts.push(`Translate the following into ${targetLang}.`); }
     if (settings.userPrompt && settings.userPrompt.trim()) { parts.push(`[Additional instructions: ${settings.userPrompt.trim()}]`); }
     
+    // 🚨 마스터 튜닝: 형태소 변화를 AI가 스스로 처리하게 뇌에 때려 박는 강력한 주입!
     if (settings.dictionary && settings.dictionary.trim()) {
         parts.push(`\n[MANDATORY GLOSSARY]`);
         parts.push(`You MUST use the following glossary for specific terms. Apply natural morphological changes (plural, possessive, verb conjugations) according to the context without breaking the term's core meaning:`);
@@ -128,4 +132,3 @@ export function gatherContextMessages(msgId, stContext, range = 1) {
     if (range <= 0) return []; const chat = stContext.chat; const messages = []; const startIdx = Math.max(0, msgId - range);
     for (let i = startIdx; i < msgId; i++) { if (chat[i] && chat[i].mes) { const cleanMsg = chat[i].mes.replace(/<(?!!--)[^>]+>/g, '').trim(); if (cleanMsg) messages.push(cleanMsg); } } return messages;
 }
-
