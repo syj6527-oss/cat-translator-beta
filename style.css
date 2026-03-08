@@ -1,5 +1,5 @@
 /* ============================================================
-   🐱 Cat Translator v18.2.0 "호랑이 마개조 V2" - style.css
+   🐱 Cat Translator v18.2.1 "호랑이 마개조 V3" - style.css
    ============================================================ */
 [data-cat-theme="cat"], body:not([data-cat-theme]) {
     --ca-glow: rgba(255, 165, 0, 0.6);
@@ -23,11 +23,8 @@
 .cat-setting-row > label { display: block; font-size: 0.95em; font-weight: 600; margin-bottom: 3px; color: var(--SmartThemeBodyColor, #000); }
 .cat-readonly-area { background: var(--SmartThemeBlurTintColor, rgba(128,128,128,0.1)) !important; opacity: 0.7; font-size: 0.8em; cursor: not-allowed; }
 .cat-stats-bar { font-size: 0.9em; padding: 8px 12px; border-radius: 6px; background: var(--ca-bg); border: 1px solid var(--ca-border); text-align: center; color: var(--SmartThemeBodyColor, #000); margin-top: 8px; }
-.cat-save-button { background: var(--ca-bg) !important; border: 1px solid var(--ca-accent) !important; color: var(--SmartThemeBodyColor, #000) !important; font-weight: bold; border-radius: 8px; padding: 10px; }
-.cat-save-button:hover { background: var(--ca-border) !important; }
 .cat-btn-secondary { font-size: 0.95em; padding: 8px 12px; border-radius: 6px; }
 
-/* 🚨 마스터 튜닝: 발바닥 정중앙 영구 고정 */
 .cat-paw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.1em; z-index: 1; user-select: none; transition: transform 0.2s; }
 .cat-paw-toggle:hover { transform: translateY(-50%) scale(1.2); }
 
@@ -39,14 +36,13 @@
     100% { transform: scale(1.2) translateZ(0); filter: drop-shadow(0 0 12px var(--ca-glow-strong)); background-color: var(--ca-bg); }
 }
 
-/* 🚨 마스터 튜닝: 이름 옆 알약 배경 완전 삭제 (투명화) */
 .name_text { gap: 10px !important; flex-wrap: wrap !important; }
 .cat-btn-group {
     display: inline-flex !important;
     gap: 10px !important;
     margin-left: 10px !important;
-    background-color: transparent !important; /* 배경 날림! */
-    padding: 0 !important; /* 여백 날림! */
+    background-color: transparent !important; 
+    padding: 0 !important; 
     align-items: center !important;
     vertical-align: middle !important;
 }
@@ -55,14 +51,38 @@
 .cat-mes-trans-btn:hover, .cat-mes-revert-btn:hover { opacity: 1; transform: scale(1.15); }
 .cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
 
-/* 🚨 마스터 튜닝: 하단 버튼 뒤로 글씨 안 비치게 강력한 가림막 캡슐 씌움 */
-.cat-input-icon { cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0 !important; margin: 0 0px !important; flex-shrink: 0; border: none !important; outline: none !important; box-shadow: none !important; -webkit-tap-highlight-color: transparent; box-sizing: border-box; background: transparent !important; }
+/* 🚨 마스터 튜닝: 그룹 컨테이너에 flex + gap 적용으로 모바일 겹침 영구 해결 */
+.cat-input-btn-group {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin-right: 8px !important;
+}
+
+.cat-input-icon { 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    width: 28px; 
+    height: 28px; 
+    padding: 0 !important; 
+    margin: 0 !important; /* flex gap이 여백을 대신하므로 margin 완전 삭제 */
+    flex-shrink: 0; 
+    border: none !important; 
+    outline: none !important; 
+    box-shadow: none !important; 
+    -webkit-tap-highlight-color: transparent; 
+    box-sizing: border-box; 
+    background: transparent !important; 
+}
+
 .cat-input-icon:active { opacity: 0.6; }
 .cat-input-icon i { color: var(--ca-accent); font-size: 0.9em; }
 .cat-input-icon .cat-emoji-icon { font-size: 1.2em; pointer-events: none; }
 
-/* ST 전송 버튼과 확실한 분리 */
-#send_but { margin-left: 8px !important; position: relative; z-index: 1; }
+#send_but { margin-left: 0px !important; position: relative; z-index: 1; }
 
 .cat-notification { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 30px; color: white; font-weight: bold; font-size: 13px; z-index: 2147483647 !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; white-space: nowrap; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; text-align: center; font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); backdrop-filter: blur(8px); }
 .cat-notification.show { top: 20px; }
@@ -94,7 +114,7 @@
     .cat-notification { font-size: 12px; padding: 8px 16px; max-width: 90vw; }
     .cat-bulk-popup, .cat-history-popup, .cat-drag-popup { max-width: calc(100vw - 32px); }
     #cat-drawer-content [style*="display:flex"] { flex-wrap: nowrap !important; }
-    .cat-input-icon { width: 24px; height: 24px; margin: 0 0px !important; }
+    .cat-input-btn-group { gap: 4px !important; margin-right: 4px !important; }
+    .cat-input-icon { width: 24px; height: 24px; }
     .cat-input-icon .cat-emoji-icon { font-size: 1em; }
-    #send_but { margin-left: 4px !important; }
 }
