@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.3.5 - ui.js (정체성 & 기능 완전 복구)
+// 🐱 Cat Translator v18.3.7 - ui.js
 // ============================================================
 import { catNotify, catNotifyProgress, getThemeEmoji, getCompletionEmoji, getModelTheme, setTextareaValue } from './utils.js';
 import { getStats, clearAllCache, exportSettings, importSettings, getHistory, togglePin } from './cache.js';
@@ -23,7 +23,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     const html = `
     <div id="cat-trans-container" class="inline-drawer">
         <div id="cat-drawer-header" class="inline-drawer-header interactable" tabindex="0">
-            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>트랜스레이터 Beta v18.3.5</span></div>
+            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>트랜스레이터 Beta v18.3.7</span></div>
             <i id="cat-drawer-toggle" class="inline-drawer-toggle fa-solid fa-chevron-down"></i>
         </div>
         <div id="cat-drawer-content" class="inline-drawer-content" style="display:none; padding:10px;">
@@ -80,12 +80,9 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     $('#cat-drawer-header').on('click', () => { $('#cat-drawer-content').slideToggle(200); });
     $('#ct-key-toggle').on('click', () => { const i = $('#ct-key'); i.attr('type', i.attr('type') === 'password' ? 'text' : 'password'); });
     
-    // 테마 감지 및 자동 저장
     $('#ct-profile, #ct-model').on('change', function() {
-        const val = $(this).val();
         const pn = $(this).find('option:selected').text().toLowerCase();
-        if (pn.includes('pro') || pn.includes('tiger')) applyTheme('tiger', true);
-        else applyTheme('cat', true);
+        applyTheme((pn.includes('pro') || pn.includes('tiger')) ? 'tiger' : 'cat', true);
         triggerAutoSave(true);
     });
 
@@ -93,7 +90,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     $('#ct-max-tokens, #ct-context-range, #ct-user-prompt, #ct-dictionary, #ct-key').on('blur', () => triggerAutoSave(false));
 
     $('#ct-clear-cache').on('click', async () => { if (confirm("캐시를 전부 삭제할까요?")) { await clearAllCache(); updateCacheStats(); catNotify("🗑️ 캐시 삭제 완료!", "success"); } });
-    $('#ct-reset-settings').on('click', () => { if (confirm("설정을 초기화할까요? (사전/API키 유지)")) { saveSettingsFn(); location.reload(); } });
+    $('#ct-reset-settings').on('click', () => { if (confirm("설정을 초기화할까요? (사전 유지)")) { saveSettingsFn(); location.reload(); } });
     $('#ct-export').on('click', () => exportSettings(settings));
     $('#ct-import-btn').on('click', () => $('#ct-import-file').click());
 }
@@ -101,7 +98,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
 export function applyTheme(theme, notify = false) {
     document.body.setAttribute('data-cat-theme', theme);
     const emoji = theme === 'tiger' ? '🐯' : '🐱';
-    $('.cat-theme-emoji, .cat-emoji-icon').text(emoji);
+    $('.cat-theme-emoji, .cat-mes-trans-btn .cat-emoji-icon, #cat-input-btn .cat-emoji-icon').text(emoji);
     if (notify) catNotify(theme === 'tiger' ? '🐯 어흥! 호랑이 모드!' : '🐱 야옹~ 고양이 모드!', 'success');
 }
 
@@ -117,8 +114,9 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
     group.append(transBtn, revertBtn, bulkBtn);
     target.before(group);
 
-    bulkBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
     transBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); processMessageFn(null, true); });
+    revertBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); const sa = $('#send_textarea'); const ot = sa.data('cat-original-text'); if(ot) setTextareaValue(sa[0], ot); });
+    bulkBtn.on('click', (e) => { e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
 }
 
 function showBulkPopup(event, settings, stContext, processMessageFn) {
@@ -138,26 +136,22 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
     popup.find('.cat-bulk-option').on('click', function() {
         const c = $(this).data('count'); popup.remove();
         let final = c; if (c === 'custom') { const i = prompt("몇 개 번역할까요?", "5"); if (!i) return; final = parseInt(i); }
-        // executeBulkTranslation 로직 연동
+        // 벌크 번역 실행 (index.js의 processMessage 반복 호출 로직)
     });
     $(document).one('click', () => popup.remove());
 }
 
-export function setupMutationObserver(processMessageFn, revertMessageFn, settings, stContext) {
+export function setupMutationObserver(p, r, settings, stContext) {
     const chat = document.getElementById('chat'); if (!chat) return;
-    const observer = new MutationObserver(() => { 
-        injectMessageButtons(processMessageFn, revertMessageFn); 
-        injectInputButtons(settings, stContext, processMessageFn); 
-    });
+    const observer = new MutationObserver(() => { injectMessageButtons(p, r); injectInputButtons(settings, stContext, p); });
     observer.observe(chat, { childList: true, subtree: true });
-    injectMessageButtons(processMessageFn, revertMessageFn); 
-    injectInputButtons(settings, stContext, processMessageFn);
+    injectMessageButtons(p, r); injectInputButtons(settings, stContext, p);
 }
 
 export function injectMessageButtons(p, r) {
     $('.mes:not(:has(.cat-btn-group))').each(function() {
         const id = $(this).attr('mesid'); if (!id) return;
-        const group = $(`<div class="cat-btn-group"><span class="cat-mes-trans-btn" data-mesid="${id}"><span class="cat-emoji-icon">${getThemeEmoji()}</span></span></div>`);
+        const group = $(`<div class="cat-btn-group"><span class="cat-mes-trans-btn" data-mesid="${id}"><span class="cat-emoji-icon">${getThemeEmoji()}</span></span><span class="cat-mes-revert-btn" data-mesid="${id}"><i class="fa-solid fa-rotate-left"></i></span></div>`);
         $(this).find('.name_text').append(group);
     });
 }
