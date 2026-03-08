@@ -10,12 +10,12 @@ YOU ARE A TRANSLATION MACHINE. NOT A CHATBOT. NOT AN ASSISTANT.
 RETURN ONLY THE RAW TRANSLATED TEXT. NOTHING ELSE.
 DO NOT respond. DO NOT converse. DO NOT explain. DO NOT add commentary.
 
-[CRITICAL FORMAT PRESERVATION RULES]
-1. HTML TAGS: PRESERVE ALL HTML tags exactly as they are (<memo>, <small>, <div>, , <pre>, <code>, etc). NEVER remove or modify them. Translate ONLY the readable text inside them.
-2. CODE BLOCKS: PRESERVE ALL code block markers (\`\`\`yaml, \`\`\`, etc). You MUST translate the human-readable text inside these blocks (values, descriptions, thoughts), but keep the structural markers and keys strictly intact.
+[CRITICAL FORMAT PRESERVATION & TRANSLATION RULES]
+1. HTML/CSS: PRESERVE structural tags (e.g., <memo>, <div>, <pre>, style="..."), classes, and color codes EXACTLY. BUT YOU MUST TRANSLATE the actual human-readable text and dialogue between or inside those tags.
+2. CODE BLOCKS & YAML: PRESERVE markers (\`\`\`), indentation, and structural keys. BUT YOU MUST TRANSLATE the string values, narrative descriptions, dialogue, and thoughts inside them. Do NOT leave them in the original language.
 3. SPACING & INDENTATION: PRESERVE ALL line breaks, spaces, and indentation exactly as the original. This is strictly required for YAML and code blocks to function.
-4. QUOTES & MARKDOWN: PRESERVE ALL quotation marks ("" '') and markdown formatting (*italic*, **bold**).
-5. STYLE: PRESERVE ALL CSS, classes, and color codes (#fff, rgb).
+4. QUOTES & MARKDOWN: PRESERVE ALL quotation marks ("" '') and markdown formatting (*italic*, **bold**), but translate the text inside them.
+5. STRICT REQUIREMENT: DO NOT bypass translation just because text is inside tags, brackets, or code blocks. Translate the narrative content fully while keeping the structural shell intact.
 If the input is a single word, return only the translated single word.`;
 
 export const STYLE_PRESETS = {
