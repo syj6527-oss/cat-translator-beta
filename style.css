@@ -1,16 +1,16 @@
 /* ============================================================
-   🐱 Cat Translator v18.4.2 - style.css
+   🐱 Cat Translator v18.4.5 - style.css
    ============================================================ */
 [data-cat-theme="cat"] { --ca-accent: #f0a030; --ca-bg: rgba(255, 165, 0, 0.08); --ca-border: rgba(255, 165, 0, 0.3); }
 [data-cat-theme="tiger"] { --ca-accent: #ffd700; --ca-bg: rgba(255, 215, 0, 0.08); --ca-border: rgba(255, 215, 0, 0.3); }
 
-/* 🚨 하단 아이콘 절대 찌그러짐 방지 필살기 */
+/* 하단 버튼 찌그러짐 & 전송 버튼 겹침 방지 */
 .cat-input-btn-group {
     display: inline-flex !important;
     align-items: center !important;
     gap: 8px !important;
     margin-right: 8px !important;
-    flex-shrink: 0 !important; /* 🚨 전송 버튼과 절대 안 겹침 */
+    flex-shrink: 0 !important; /* 🚨 절대 안 찌그러짐 */
 }
 
 .cat-input-icon { 
@@ -18,6 +18,7 @@
     display: flex !important; 
     width: 28px !important; 
     height: 28px !important; 
+    flex-shrink: 0 !important; 
     justify-content: center;
     align-items: center;
     background: transparent !important;
