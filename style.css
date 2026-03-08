@@ -1,5 +1,5 @@
 /* ============================================================
-   🐱 Cat Translator v18.2.1 "호랑이 마개조 V3" - style.css
+   🐱 Cat Translator v18.2.4 "호랑이 마개조 V4" - style.css
    ============================================================ */
 [data-cat-theme="cat"], body:not([data-cat-theme]) {
     --ca-glow: rgba(255, 165, 0, 0.6);
@@ -51,25 +51,26 @@
 .cat-mes-trans-btn:hover, .cat-mes-revert-btn:hover { opacity: 1; transform: scale(1.15); }
 .cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
 
-/* 🚨 마스터 튜닝: 그룹 컨테이너에 flex + gap 적용으로 모바일 겹침 영구 해결 */
+/* 🚨 마스터 튜닝: 그룹 컨테이너에 flex-shrink: 0을 줘서 텍스트창에 찌그러지지 않게 강제 방어! */
 .cat-input-btn-group {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 8px !important;
     margin-right: 8px !important;
+    flex-shrink: 0 !important; 
 }
 
 .cat-input-icon { 
     cursor: pointer; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    width: 28px; 
-    height: 28px; 
+    display: flex !important; 
+    align-items: center !important; 
+    justify-content: center !important; 
+    width: 28px !important; 
+    height: 28px !important; 
     padding: 0 !important; 
-    margin: 0 !important; /* flex gap이 여백을 대신하므로 margin 완전 삭제 */
-    flex-shrink: 0; 
+    margin: 0 !important; 
+    flex-shrink: 0 !important; /* 아이콘 절대 찌그러짐 방지 */
     border: none !important; 
     outline: none !important; 
     box-shadow: none !important; 
@@ -82,7 +83,7 @@
 .cat-input-icon i { color: var(--ca-accent); font-size: 0.9em; }
 .cat-input-icon .cat-emoji-icon { font-size: 1.2em; pointer-events: none; }
 
-#send_but { margin-left: 0px !important; position: relative; z-index: 1; }
+/* 🚨 기존에 있던 #send_but (전송 버튼) 강제 조작 CSS 코드 완벽 삭제 (버그의 원흉 제거) */
 
 .cat-notification { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 30px; color: white; font-weight: bold; font-size: 13px; z-index: 2147483647 !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; white-space: nowrap; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; text-align: center; font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); backdrop-filter: blur(8px); }
 .cat-notification.show { top: 20px; }
@@ -114,7 +115,7 @@
     .cat-notification { font-size: 12px; padding: 8px 16px; max-width: 90vw; }
     .cat-bulk-popup, .cat-history-popup, .cat-drag-popup { max-width: calc(100vw - 32px); }
     #cat-drawer-content [style*="display:flex"] { flex-wrap: nowrap !important; }
-    .cat-input-btn-group { gap: 4px !important; margin-right: 4px !important; }
-    .cat-input-icon { width: 24px; height: 24px; }
-    .cat-input-icon .cat-emoji-icon { font-size: 1em; }
+    .cat-input-btn-group { gap: 6px !important; margin-right: 4px !important; }
+    .cat-input-icon { width: 28px !important; height: 28px !important; }
+    .cat-input-icon .cat-emoji-icon { font-size: 1.1em; }
 }
