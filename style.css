@@ -1,5 +1,5 @@
 /* ============================================================
-   🐱 Cat Translator v18.5.0 - style.css
+   🐱 Cat Translator v18.5.2 - style.css
    ============================================================ */
 [data-cat-theme="cat"], body:not([data-cat-theme]) {
     --ca-glow: rgba(255, 165, 0, 0.6);
@@ -43,13 +43,13 @@
 .cat-mes-trans-btn:hover, .cat-mes-revert-btn:hover { opacity: 1; transform: scale(1.15); }
 .cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
 
-/* 🚨 하단 아이콘 겹침 절대 방지 구역 */
+/* 🚨 하단 아이콘 그룹화 및 겹침 강력 방어 */
 .cat-input-btn-group {
     display: inline-flex !important;
     align-items: center !important;
     gap: 8px !important;
     margin-right: 8px !important;
-    flex-shrink: 0 !important; /* 전송버튼에 밀리지 않게 방어 */
+    flex-shrink: 0 !important; 
 }
 
 .cat-input-icon { 
@@ -105,3 +105,4 @@
     .cat-input-icon { width: 28px !important; height: 28px !important; }
     .cat-input-icon .cat-emoji-icon { font-size: 1.1em; }
 }
+
