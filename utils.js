@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.4.2 - utils.js
+// 🐱 Cat Translator v18.4.5 - utils.js
 // ============================================================
 
 export function getThemeEmoji() {
@@ -21,13 +21,22 @@ export function catNotify(message, type = 'success') {
     setTimeout(() => { notifyHtml.removeClass('show'); setTimeout(() => notifyHtml.remove(), 500); }, 2500);
 }
 
-// 🚨 코드박스 및 상태창 보존 필살기
+export function catNotifyProgress(message, onAbort) {
+    const el = catNotify(message, 'progress');
+    if (onAbort) {
+        el.css({ cursor: 'pointer', pointerEvents: 'auto' });
+        el.on('click', () => { onAbort(); el.removeClass('show'); setTimeout(() => el.remove(), 500); });
+    }
+    return el;
+}
+
+// 🚨 코드박스 및 상태창 실종 버그 완전 해결!
 export function cleanResult(text) {
     if (!text) return "";
     let cleaned = text.replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "");
     
-    // 🚨 절대 주의: 코드블록(```)을 삭제하는 정규식을 완전히 제거함!
-    // 줄바꿈과 들여쓰기를 최대한 유지하여 상태창 레이아웃을 보호합니다.
+    // 🚨 이전 AI가 넣었던 ".replace(/```[\s\S]*?```/g, "")" (코드박스 삭제 코드)를 영구 제거했습니다.
+    // 마크다운 형식과 줄바꿈을 그대로 유지하여 상태창 레이아웃을 보존합니다.
     return cleaned.trim();
 }
 
