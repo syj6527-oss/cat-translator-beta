@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.2.0 - ui.js
+// 🐱 Translator v1.0.0 - ui.js
 // ============================================================
 import { catNotify, catNotifyProgress, getThemeEmoji, getCompletionEmoji, getModelTheme, setTextareaValue } from './utils.js';
 import { getStats, clearAllCache, exportSettings, importSettings, getHistory, togglePin } from './cache.js';
@@ -24,7 +24,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     const html = `
     <div id="cat-trans-container" class="inline-drawer">
         <div id="cat-drawer-header" class="inline-drawer-header interactable" tabindex="0">
-            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>트랜스레이터 Beta v18.3.1</span></div>
+            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>Translator v1.0.0</span></div>
             <i id="cat-drawer-toggle" class="inline-drawer-toggle fa-solid fa-chevron-down"></i>
         </div>
         <div id="cat-drawer-content" class="inline-drawer-content" style="display:none; padding:10px;">

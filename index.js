@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.2.0 "호랑이 각성" (UI/UX 튜닝판)
+// 🐱 Translator v1.0.0
 // ============================================================
 import { extension_settings, getContext } from '../../../../scripts/extensions.js';
 import { catNotify, getThemeEmoji, getCompletionEmoji, setTextareaValue, getModelTheme, detectLanguageDirection, getCacheModelKey } from './utils.js';
@@ -7,10 +7,14 @@ import { initCache } from './cache.js';
 import { fetchTranslation, gatherContextMessages } from './translator.js';
 import { setupSettingsPanel, collectSettings, updateCacheStats, injectMessageButtons, injectInputButtons, setupDragDictionary, setupMutationObserver, showHistoryPopup, applyTheme } from './ui.js';
 
-const EXT_NAME = "cat-translator-beta";
+const EXT_NAME = "cat-translator";
 const stContext = getContext();
 
 const defaultSettings = { profile: '', customKey: '', vertexKey: '', vertexProject: '', vertexRegion: 'global', directModel: 'gemini-1.5-flash', customModelName: '', autoMode: 'none', targetLang: 'Korean', style: 'normal', temperature: 0.3, maxTokens: 8192, contextRange: 1, userPrompt: '', dictionary: '' };
+// 베타 → 정식 설정 마이그레이션 (기존 사용자 설정 보존)
+if (!extension_settings[EXT_NAME] && extension_settings["cat-translator-beta"]) {
+    extension_settings[EXT_NAME] = { ...extension_settings["cat-translator-beta"] };
+}
 let settings = Object.assign({}, defaultSettings, extension_settings[EXT_NAME]);
 
 function saveSettings() {
@@ -121,6 +125,6 @@ jQuery(async () => {
     stContext.eventSource.on(stContext.event_types.CHARACTER_MESSAGE_RENDERED, (d) => { if (settings.autoMode === 'none' || settings.autoMode === 'input') return; const msgId = typeof d === 'object' ? d.messageId : d; setTimeout(() => processMessage(msgId, false, null, false, true), 500); });
     stContext.eventSource.on(stContext.event_types.USER_MESSAGE_RENDERED, (d) => { if (settings.autoMode === 'none' || settings.autoMode === 'output') return; const msgId = typeof d === 'object' ? d.messageId : d; setTimeout(() => processMessage(msgId, true, null, false, true), 500); });
     const bodyObserver = new MutationObserver(() => { applyTheme(getModelTheme(settings.directModel)); }); bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    console.log('[CAT] 🐯 Cat Translator Beta V2 로드 완료!');
+    console.log('[CAT] 🐱 Translator v1.0.0 로드 완료!');
 });
 
