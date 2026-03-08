@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Cat Translator v18.2.2 - ui.js (디자인 & UX 개편 & MAX 4)
+// 🐱 Cat Translator v18.2.3 - ui.js (디자인 & 감성 디테일 끝판왕)
 // ============================================================
 import { catNotify, catNotifyProgress, getThemeEmoji, getCompletionEmoji, getModelTheme, setTextareaValue } from './utils.js';
 import { getStats, clearAllCache, exportSettings, importSettings, getHistory, togglePin } from './cache.js';
@@ -21,11 +21,11 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     
     const dictIcon = (settings.dictionary && settings.dictionary.trim()) ? '📬' : '📭';
 
-    // 🚨 MAX 4 적용 및 placeholder(희미한 글씨) 추가
+    // 🚨 토큰 라벨 간소화 및 MAX 8192 placeholder 추가
     const html = `
     <div id="cat-trans-container" class="inline-drawer">
         <div id="cat-drawer-header" class="inline-drawer-header interactable" tabindex="0">
-            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>트랜스레이터 Beta v18.2.2</span></div>
+            <div class="inline-drawer-title"><span class="cat-theme-emoji">🐱</span><span>트랜스레이터 Beta v18.2.3</span></div>
             <i id="cat-drawer-toggle" class="inline-drawer-toggle fa-solid fa-chevron-down"></i>
         </div>
         <div id="cat-drawer-content" class="inline-drawer-content" style="display:none; padding:10px;">
@@ -53,7 +53,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
                 <div class="cat-setting-row" style="width:80px;"><label>온도</label><input type="number" id="ct-temperature" class="text_pole" value="${settings.temperature || 0.3}" min="0" max="1" step="0.1"></div>
             </div>
             <div style="display:flex; gap:8px;">
-                <div class="cat-setting-row" style="flex:1;"><label>Max Tokens</label><input type="number" id="ct-max-tokens" class="text_pole" value="${settings.maxTokens || 8192}" min="256" max="65536" step="256"></div>
+                <div class="cat-setting-row" style="flex:1;"><label>토큰</label><input type="number" id="ct-max-tokens" class="text_pole" value="${settings.maxTokens || 8192}" min="256" max="65536" step="256" placeholder="MAX 8192"></div>
                 <div class="cat-setting-row" style="width:100px;"><label>문맥 범위</label><input type="number" id="ct-context-range" class="text_pole" value="${settings.contextRange !== undefined ? settings.contextRange : 1}" min="0" max="4" step="1" placeholder="MAX 4"></div>
             </div>
             <div class="cat-setting-row"><label>시스템 보호막 (🔒 고정)</label><textarea id="ct-shield" class="text_pole cat-readonly-area" rows="3" readonly>${SYSTEM_SHIELD}</textarea></div>
@@ -75,37 +75,56 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
 
     $('#extensions_settings').append(html);
 
-    const triggerAutoSave = () => {
+    // 🚨 마스터 튜닝: 테마(고양이/호랑이)에 맞춰 동적으로 물고기/고기 아이콘 출력!
+    const triggerAutoSave = (silent = false) => {
         saveSettingsFn();
-        catNotify(`💾 설정이 자동 저장되었습니다.`, "success");
+        if (!silent) {
+            const saveIcon = getCompletionEmoji(); // 호랑이면 🍖, 고양이면 🐟 반환
+            catNotify(`${saveIcon} 설정이 자동 저장되었습니다.`, "success");
+        }
     };
 
     $('#cat-drawer-header').on('click', (e) => { e.stopPropagation(); $('#cat-drawer-content').slideToggle(200); $('#cat-drawer-toggle').toggleClass('fa-chevron-down fa-chevron-up'); });
     $('#ct-key-toggle').on('click', () => { const i = $('#ct-key'); i.attr('type', i.attr('type') === 'password' ? 'text' : 'password'); });
     
-    $('#ct-model').val(settings.directModel).on('change', function () { const val = $(this).val(); $('#ct-model-custom').toggle(val === 'custom'); if (val !== 'custom') applyTheme(getModelTheme(val), true); triggerAutoSave(); });
-    $('#ct-model-custom').val(settings.customModelName || '').on('input', function () { applyTheme(getModelTheme($(this).val()), true); }).on('blur', triggerAutoSave);
+    $('#ct-model').val(settings.directModel).on('change', function () { 
+        const val = $(this).val(); 
+        $('#ct-model-custom').toggle(val === 'custom'); 
+        if (val !== 'custom') applyTheme(getModelTheme(val), true); 
+        triggerAutoSave(true); 
+    });
+    
+    $('#ct-model-custom').val(settings.customModelName || '').on('input', function () { 
+        applyTheme(getModelTheme($(this).val()), true); 
+    }).on('blur', () => triggerAutoSave(true));
     
     $('#ct-profile').val(settings.profile).on('change', function () {
         settings.profile = $(this).val();
         $('#ct-direct-settings').toggle(settings.profile === '');
         const pn = $(this).find('option:selected').text().toLowerCase();
-        if (pn.includes('pro') || pn.includes('프로') || pn.includes('tiger') || pn.includes('호랑이')) applyTheme('tiger', true);
-        else if (pn.includes('flash') || pn.includes('플래') || pn.includes('플레') || pn.includes('cat') || pn.includes('고양이')) applyTheme('cat', true);
-        else if (settings.profile === '') applyTheme(getModelTheme(settings.directModel), true);
-        else applyTheme('cat', true);
-        triggerAutoSave();
+        
+        if (pn.includes('pro') || pn.includes('프로') || pn.includes('tiger') || pn.includes('호랑이')) {
+            applyTheme('tiger', true);
+        } else if (pn.includes('flash') || pn.includes('플래') || pn.includes('플레') || pn.includes('cat') || pn.includes('고양이')) {
+            applyTheme('cat', true);
+        } else if (settings.profile === '') {
+            applyTheme(getModelTheme(settings.directModel), true);
+        } else {
+            applyTheme('cat', true);
+        }
+        
+        triggerAutoSave(true); 
     });
 
     $('#ct-style').val(settings.style || 'normal').on('change', function () { const preset = STYLE_PRESETS[$(this).val()]; if (preset) $('#ct-temperature').val(preset.temperature); triggerAutoSave(); });
     
-    $('#ct-auto-mode, #ct-lang, #ct-temperature, #ct-max-tokens').on('change', triggerAutoSave);
+    $('#ct-auto-mode, #ct-lang, #ct-temperature').on('change', () => triggerAutoSave(false));
     $('#ct-auto-mode').val(settings.autoMode); $('#ct-lang').val(settings.targetLang); $('#ct-temperature').val(settings.temperature || 0.3);
     
     $('#ct-dictionary').on('input', function () {
         settings.dictionary = $(this).val();
         $('#ct-dict-reset').text(settings.dictionary.trim() ? '📬' : '📭');
-    }).on('blur', triggerAutoSave);
+    }).on('blur', () => triggerAutoSave(false));
     
     $('#ct-dict-reset').on('click', async function() {
         $('#ct-dictionary').val(''); settings.dictionary = ''; saveSettingsFn();
@@ -114,18 +133,26 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         catNotify(`${getThemeEmoji()} 📭 우편함(사전) 비우기 + 캐시 초기화 완료!`, "success");
     });
     
-    $('#ct-user-prompt, #ct-key').on('blur', triggerAutoSave);
+    $('#ct-user-prompt, #ct-key').on('blur', () => triggerAutoSave(false));
     
-    // 🚨 문맥 범위 4로 제한 및 비어있을 때 처리
+    // 🚨 칸을 비웠을 때 Placeholder가 보이도록 허용하면서 자동 저장!
+    $('#ct-max-tokens').on('change', function () {
+        if ($(this).val() === '') {
+            triggerAutoSave(false);
+            return; 
+        }
+        triggerAutoSave(false);
+    });
+
     $('#ct-context-range').on('change', function () { 
         if ($(this).val() === '') {
-            triggerAutoSave();
-            return; // 칸을 비우면 placeholder 'MAX 4'가 보이도록 허용
+            triggerAutoSave(false);
+            return; 
         }
         let val = parseInt($(this).val()) || 0; 
         val = Math.min(4, Math.max(0, val)); 
         $(this).val(val); 
-        triggerAutoSave();
+        triggerAutoSave(false);
     });
 
     $('#ct-clear-cache').on('click', async () => { await clearAllCache(); updateCacheStats(); catNotify(`${getThemeEmoji()} 캐시 전체 삭제 완료! 📂`, "success"); });
@@ -143,13 +170,16 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
 export function collectSettings() {
     const modelVal = $('#ct-model').val();
     let parsedContext = parseInt($('#ct-context-range').val());
+    let parsedTokens = parseInt($('#ct-max-tokens').val());
+    
     return {
         profile: $('#ct-profile').val() || '', customKey: $('#ct-key').val() || '',
         directModel: modelVal === 'custom' ? ($('#ct-model-custom').val() || 'gemini-2.0-flash') : (modelVal || 'gemini-1.5-flash'),
         customModelName: $('#ct-model-custom').val() || '', autoMode: $('#ct-auto-mode').val() || 'none',
         targetLang: $('#ct-lang').val() || 'Korean', style: $('#ct-style').val() || 'normal',
-        temperature: parseFloat($('#ct-temperature').val()) || 0.3, maxTokens: parseInt($('#ct-max-tokens').val()) || 8192,
-        contextRange: isNaN(parsedContext) ? 1 : Math.min(4, Math.max(0, parsedContext)), // 🚨 저장 시에도 4로 제한
+        temperature: parseFloat($('#ct-temperature').val()) || 0.3, 
+        maxTokens: isNaN(parsedTokens) ? 8192 : parsedTokens, // 빈칸이면 8192 토큰 기본값 적용
+        contextRange: isNaN(parsedContext) ? 1 : Math.min(4, Math.max(0, parsedContext)),
         userPrompt: $('#ct-user-prompt').val() || '', dictionary: $('#ct-dictionary').val() || ''
     };
 }
