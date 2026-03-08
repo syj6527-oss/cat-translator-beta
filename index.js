@@ -24,16 +24,14 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
     
     const mesBlock = $(`.mes[mesid="${msgId}"]`);
 
-    // [버그 수정 1] 이벤트로 인한 자동 번역 시, 이미 번역된 노드면 즉시 스킵
     if (isAutoEvent && mesBlock.attr('data-cat-translated') === 'true') return;
     if (isAutoEvent && msg.extra?.display_text) return;
 
     const startGlow = () => mesBlock.find('.cat-mes-trans-btn .cat-emoji-icon').addClass('cat-glow-anim');
     const stopGlow = () => mesBlock.find('.cat-mes-trans-btn .cat-emoji-icon').removeClass('cat-glow-anim');
 
-    // 자동번역 여부 판별
     const isAutoMode = (settings.autoMode !== 'none');
-    const isAutoTriggered = isAutoMode && !abortSignal; // 벌크는 abortSignal 있음
+    const isAutoTriggered = isAutoMode && !abortSignal;
 
     if (mesBlock.find('.cat-mes-trans-btn .cat-emoji-icon.cat-glow-anim').length > 0) return;
     startGlow();
@@ -42,12 +40,10 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
         const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
-        // 항상 원본에서 읽기 (msg.mes가 이미 번역문일 수 있으므로)
         let textToTranslate = msg.extra?.original_mes || msg.mes;
         const existingTranslation = msg.extra?.display_text || null;
         const isRetranslation = !!existingTranslation;
 
-        // 번역 진행 토스트
         if (!silent && !isRetranslation) {
             const prefix = isAutoTriggered ? '자동 번역' : '번역';
             catNotify(`${getThemeEmoji()} ${prefix} 진행 중...`, "success");
@@ -71,7 +67,7 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
 }
 
 async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTranslation, abortSignal, silent = false) {
-    const forceLang = null; // 스마트 언어 감지로 위임
+    const forceLang = null;
     const contextRange = parseInt(settings.contextRange) || 1;
     const contextMsgs = gatherContextMessages(msgId, stContext, contextRange);
 
@@ -79,13 +75,10 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
 
     if (result && result.text && result.text.trim() && result.text !== textToTranslate) {
         if (!msg.extra) msg.extra = {};
-        // 원본 백업 (최초 1회만)
         if (!msg.extra.original_mes) msg.extra.original_mes = textToTranslate;
-        // A방식: msg.mes + display_text 둘 다 수정 (상태창/주석 블록 대응)
         msg.extra.display_text = result.text;
         msg.mes = result.text;
         
-        // [버그 수정 1] 번역 완료 마커 추가
         $(`.mes[mesid="${msgId}"]`).attr('data-cat-translated', 'true');
 
         stContext.updateMessageBlock(msgId, msg);
@@ -94,7 +87,6 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
             catNotify(`${getCompletionEmoji()} 번역 완료! '${preview}'`, "success");
         }
     } else if (!silent && result === null) {
-        // C방식: 번역 실패 시 수정 모드 안내
         catNotify(`${getThemeEmoji()} 번역 실패. 연필 아이콘으로 수정 모드에서 시도해보세요.`, "warning");
     }
 }
@@ -117,7 +109,6 @@ function revertMessage(id) {
     if (msg.extra?.display_text) delete msg.extra.display_text;
     if (msg.extra?.original_mes) { msg.mes = msg.extra.original_mes; delete msg.extra.original_mes; }
     
-    // 복구 시 마커 제거
     $(`.mes[mesid="${msgId}"]`).removeAttr('data-cat-translated');
     
     stContext.updateMessageBlock(msgId, msg); catNotify(`${getThemeEmoji()} 원문 복구 완료!`, "success");
@@ -132,3 +123,4 @@ jQuery(async () => {
     const bodyObserver = new MutationObserver(() => { applyTheme(getModelTheme(settings.directModel)); }); bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     console.log('[CAT] 🐯 Cat Translator Beta V2 로드 완료!');
 });
+
