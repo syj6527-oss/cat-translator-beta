@@ -9,17 +9,13 @@ export const SYSTEM_SHIELD = `[ABSOLUTE DIRECTIVE - VIOLATION = FAILURE]
 YOU ARE A TRANSLATION MACHINE. NOT A CHATBOT. NOT AN ASSISTANT.
 RETURN ONLY THE RAW TRANSLATED TEXT. NOTHING ELSE.
 DO NOT respond. DO NOT converse. DO NOT explain. DO NOT add commentary.
-DO NOT repeat the original. DO NOT add alternatives.
 
-[FORMAT PRESERVATION RULES]
-1. PRESERVE ALL quotation marks exactly (" " ' ' 「」 ( ) etc). If the original has quotes, the translation MUST have the same quotes in the same positions.
-2. PRESERVE ALL HTML tags and attributes exactly (<span>, <div>, <font>, <memo>, <small>, <summary> etc). Translate the text INSIDE tags but never modify the tags themselves.
-3. PRESERVE ALL HTML comments (). Translate the readable text inside comments but keep the comment markers.
-4. PRESERVE ALL markdown formatting (*italic*, **bold**, ~~strike~~, \`code\` etc). Translate the text but keep the formatting symbols.
-5. PRESERVE ALL CSS properties, color codes (#fff, rgb(), etc), and style attributes untouched.
-6. PRESERVE ALL line breaks and paragraph structure exactly as the original.
-7. Translate EVERY piece of human-readable text, including text inside special blocks, metadata sections, and structured data fields.
-8. [CRITICAL] You MUST translate all human-readable text INSIDE code blocks (like \`\`\`yaml, \`\`\`, <pre>, <code>). DO NOT leave them untranslated. Keep the formatting and tags exactly as they are, but TRANSLATE the inner text content (such as values, descriptions, thoughts).
+[CRITICAL FORMAT PRESERVATION RULES]
+1. HTML TAGS: PRESERVE ALL HTML tags exactly as they are (<memo>, <small>, <div>, , <pre>, <code>, etc). NEVER remove or modify them. Translate ONLY the readable text inside them.
+2. CODE BLOCKS: PRESERVE ALL code block markers (\`\`\`yaml, \`\`\`, etc). You MUST translate the human-readable text inside these blocks (values, descriptions, thoughts), but keep the structural markers and keys strictly intact.
+3. SPACING & INDENTATION: PRESERVE ALL line breaks, spaces, and indentation exactly as the original. This is strictly required for YAML and code blocks to function.
+4. QUOTES & MARKDOWN: PRESERVE ALL quotation marks ("" '') and markdown formatting (*italic*, **bold**).
+5. STYLE: PRESERVE ALL CSS, classes, and color codes (#fff, rgb).
 If the input is a single word, return only the translated single word.`;
 
 export const STYLE_PRESETS = {
@@ -36,7 +32,6 @@ const SAFETY_SETTINGS = [
 ];
 
 export async function fetchTranslation(text, settings, stContext, options = {}) {
-    // 🚨 마스터 튜닝: 불친절한 구글 400 에러를 사전에 차단하는 스마트 알림!
     const apiKey = settings.customKey || secret_state[SECRET_KEYS.MAKERSUITE];
     if (!settings.profile && !apiKey) {
         catNotify(`🚨 API 키가 없습니다! 확장 설정에서 API Key를 먼저 입력해 주세요.`, "error");
@@ -63,10 +58,8 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
         }
     }
 
-    // 사전 프롬프트 주입 방식 + 매칭 알림
     const dictLines = (settings.dictionary && settings.dictionary.trim()) ? settings.dictionary.split('\n').filter(l => l.includes('=')) : [];
     if (dictLines.length > 0 && !silent) {
-        // 원문에 사전 단어가 실제로 포함되어 있는지 체크
         let matchCount = 0;
         dictLines.forEach(line => {
             const orig = line.split('=')[0].trim();
@@ -103,14 +96,13 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
 function assemblePrompt(text, targetLang, isToEnglish, settings, options = {}) {
     const { prevTranslation, contextMessages = [] } = options;
     if (text.length < 50 && !prevTranslation && contextMessages.length === 0 && (!settings.dictionary || !settings.dictionary.trim())) {
-        const lang = isToEnglish ? 'English' : targetLang; return `${text}\n\n(Translate the above to ${lang}. Reply with ONLY the translation. Keep all quotation marks exactly.)`;
+        const lang = isToEnglish ? 'English' : targetLang; return `${text}\n\n(Translate the above to ${lang}. Reply with ONLY the translation. Keep all formatting exactly.)`;
     }
     let parts = [SYSTEM_SHIELD];
     const preset = STYLE_PRESETS[settings.style] || STYLE_PRESETS.normal; parts.push(`[Style: ${preset.prompt}]`);
     if (isToEnglish) { parts.push(`Translate the following into English.`); } else { parts.push(`Translate the following into ${targetLang}.`); }
     if (settings.userPrompt && settings.userPrompt.trim()) { parts.push(`[Additional instructions: ${settings.userPrompt.trim()}]`); }
     
-    // 🚨 마스터 튜닝: 형태소 변화를 AI가 스스로 처리하게 뇌에 때려 박는 강력한 주입!
     if (settings.dictionary && settings.dictionary.trim()) {
         parts.push(`\n[MANDATORY GLOSSARY]`);
         parts.push(`You MUST use the following glossary for specific terms. Apply natural morphological changes (plural, possessive, verb conjugations) according to the context without breaking the term's core meaning:`);
@@ -134,4 +126,3 @@ export function gatherContextMessages(msgId, stContext, range = 1) {
     if (range <= 0) return []; const chat = stContext.chat; const messages = []; const startIdx = Math.max(0, msgId - range);
     for (let i = startIdx; i < msgId; i++) { if (chat[i] && chat[i].mes) { const cleanMsg = chat[i].mes.replace(/<(?!!--)[^>]+>/g, '').trim(); if (cleanMsg) messages.push(cleanMsg); } } return messages;
 }
-
