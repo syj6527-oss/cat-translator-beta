@@ -5,15 +5,21 @@ import { secret_state, SECRET_KEYS } from '../../../../scripts/secrets.js';
 import { cleanResult, catNotify, detectLanguageDirection, getThemeEmoji, getCompletionEmoji } from './utils.js';
 import { getCached, setCached } from './cache.js';
 
-// 🚨 마스터 튜닝: AI가 주석(), <memo>, <small> tags, and YAML code blocks (\`\`\`yaml) to store "Hidden Notes" and "Character Status".
+// 🚨 마스터 튜닝: 문법 오류(백틱) 원천 차단 + 내부 텍스트 강제 번역 지시문!
+export const SYSTEM_SHIELD = `[ABSOLUTE DIRECTIVE - VIOLATION = FAILURE]
+YOU ARE A TRANSLATION MACHINE. NOT A CHATBOT.
+RETURN ONLY THE RAW TRANSLATED TEXT. NOTHING ELSE.
+
+[CRITICAL TRANSLATION RULES FOR SPECIAL BLOCKS]
+The user relies heavily on HTML comments (), <memo>, <small> tags, and YAML code blocks to store "Hidden Notes" and "Character Status".
 You MUST TRANSLATE the human-readable English text INSIDE these blocks into the target language.
 DO NOT skip or ignore the text just because it is inside a comment or a code block. Translate the meaning completely!
 
 [FORMAT PRESERVATION RULES]
 1. TRANSLATE INSIDE COMMENTS: If you see , you MUST translate "text" but keep the wrappers perfectly intact.
-2. TRANSLATE INSIDE YAML: If you see \`\`\`yaml, you MUST translate the descriptions/values inside it, but KEEP all YAML structures, keys, dashes (-), spacing, and backticks (\`) perfectly intact.
+2. TRANSLATE INSIDE YAML: If you see yaml code blocks, you MUST translate the descriptions/values inside it, but KEEP all YAML structures, keys, dashes (-), spacing, and block markers perfectly intact.
 3. HTML TAGS: PRESERVE ALL tags EXACTLY (<memo>, <small>, <span>, etc.). Never modify them, but TRANSLATE the text between them.
-4. QUOTES & BRACKETS: Preserve all quotation marks and special brackets exactly (" " ' ' 「」 \` \`).
+4. QUOTES & BRACKETS: Preserve all quotation marks and special brackets exactly (" " ' ' 「」).
 If the input is a single word, return only the translated single word.`;
 
 export const STYLE_PRESETS = {
