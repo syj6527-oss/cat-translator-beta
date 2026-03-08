@@ -60,13 +60,17 @@ export function catNotifyProgress(message, onAbort) {
 }
 
 // 🚨 마스터 요청: 코드블록 내부 텍스트 및 YAML 들여쓰기 증발 완벽 방어!
-export function cleanResult(text) {
+export function cleanResult(text, originalText = "") {
     if (!text) return "";
     
     let cleaned = text.replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "");
     
+    // 원본 텍스트에 백틱(```)이 포함되어 있었는지 확인합니다.
+    const originalHasCodeBlock = /^```[\s\S]*```$/.test(originalText.trim());
     const wholeCodeBlockMatch = cleaned.match(/^```[a-z]*\n([\s\S]*?)\n```$/i);
-    if (wholeCodeBlockMatch) {
+    
+    // 원문에 백틱이 없었는데 AI가 멋대로 씌운 경우에만 껍데기를 벗겨냅니다.
+    if (wholeCodeBlockMatch && !originalHasCodeBlock) {
         cleaned = wholeCodeBlockMatch[1];
     }
 
