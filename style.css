@@ -36,22 +36,7 @@
     100% { transform: scale(1.2) translateZ(0); filter: drop-shadow(0 0 12px var(--ca-glow-strong)); background-color: var(--ca-bg); }
 }
 
-.name_text { gap: 10px !important; flex-wrap: wrap !important; }
-.cat-btn-group {
-    display: inline-flex !important;
-    gap: 10px !important;
-    margin-left: 10px !important;
-    background-color: transparent !important; 
-    padding: 0 !important; 
-    align-items: center !important;
-    vertical-align: middle !important;
-}
-
-.cat-mes-trans-btn, .cat-mes-revert-btn { cursor: pointer; font-size: 1.3em; opacity: 0.8; transition: opacity 0.2s, transform 0.2s; }
-.cat-mes-trans-btn:hover, .cat-mes-revert-btn:hover { opacity: 1; transform: scale(1.15); }
-.cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
-
-/* 🚨 마스터 튜닝: 그룹 컨테이너에 flex-shrink: 0을 줘서 텍스트창에 찌그러지지 않게 강제 방어! */
+/* 🚨 아이콘 절대 찌그러짐 방지: flex-shrink 0 적용 */
 .cat-input-btn-group {
     display: inline-flex !important;
     align-items: center !important;
@@ -70,7 +55,7 @@
     height: 28px !important; 
     padding: 0 !important; 
     margin: 0 !important; 
-    flex-shrink: 0 !important; /* 아이콘 절대 찌그러짐 방지 */
+    flex-shrink: 0 !important; 
     border: none !important; 
     outline: none !important; 
     box-shadow: none !important; 
@@ -82,8 +67,6 @@
 .cat-input-icon:active { opacity: 0.6; }
 .cat-input-icon i { color: var(--ca-accent); font-size: 0.9em; }
 .cat-input-icon .cat-emoji-icon { font-size: 1.2em; pointer-events: none; }
-
-/* 🚨 기존에 있던 #send_but (전송 버튼) 강제 조작 CSS 코드 완벽 삭제 (버그의 원흉 제거) */
 
 .cat-notification { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 30px; color: white; font-weight: bold; font-size: 13px; z-index: 2147483647 !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; white-space: nowrap; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; text-align: center; font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); backdrop-filter: blur(8px); }
 .cat-notification.show { top: 20px; }
@@ -101,16 +84,6 @@
 .cat-history-pin:hover { transform: scale(1.3); }
 .cat-history-new { border-top: 1px solid var(--ca-border); justify-content: center; font-weight: 600; color: var(--ca-accent); }
 
-.cat-drag-paw { cursor: pointer; font-size: 2.2em; animation: cat-paw-bounce 0.5s ease; user-select: none; filter: drop-shadow(0 2px 8px rgba(255, 105, 180, 0.6)); transition: transform 0.2s; }
-.cat-drag-paw:hover { transform: scale(1.3); filter: drop-shadow(0 2px 12px rgba(255, 105, 180, 0.9)); }
-@keyframes cat-paw-bounce { 0% { opacity: 0; transform: translateY(-10px) scale(0.5); } 70% { transform: translateY(3px) scale(1.1); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-.cat-drag-popup { background: var(--SmartThemeBlurTintColor, #2a2a2a); border: 1px solid var(--ca-border); border-radius: 10px; padding: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); min-width: 220px; }
-.cat-drag-header { font-size: 0.85em; font-weight: 600; margin-bottom: 8px; color: var(--SmartThemeBodyColor, #fff); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cat-drag-input { width: 100%; margin-bottom: 8px; box-sizing: border-box; }
-.cat-drag-actions { display: flex; gap: 6px; }
-.cat-drag-actions button { flex: 1; font-size: 0.85em; padding: 6px; border-radius: 6px; }
-.cat-drag-register { background: var(--ca-bg) !important; border: 1px solid var(--ca-accent) !important; color: var(--ca-accent) !important; font-weight: 600; }
-
 @media (max-width: 768px) {
     .cat-notification { font-size: 12px; padding: 8px 16px; max-width: 90vw; }
     .cat-bulk-popup, .cat-history-popup, .cat-drag-popup { max-width: calc(100vw - 32px); }
@@ -119,3 +92,4 @@
     .cat-input-icon { width: 28px !important; height: 28px !important; }
     .cat-input-icon .cat-emoji-icon { font-size: 1.1em; }
 }
+
