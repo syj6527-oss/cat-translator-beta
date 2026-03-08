@@ -1,5 +1,6 @@
 // ============================================================
-// 🐱 Cat Translator v18.5.0 - utils.js
+// 🐱 Cat Translator v18.5.2 - utils.js (전체 로직 보존)
+// 유틸리티: 알림, 정규식 세탁기, HTML/CSS 방어, 언어 감지
 // ============================================================
 
 export function getThemeEmoji() {
@@ -14,9 +15,11 @@ export function getCompletionEmoji() {
 
 export function catNotify(message, type = 'success') {
     $('.cat-notification').remove();
+    const emoji = getThemeEmoji();
     const colors = { success: '#2ecc71', warning: '#f39c12', error: '#e74c3c', progress: '#f39c12' };
     const bgColor = colors[type] || colors.success;
-    const notifyHtml = $(`<div class="cat-notification cat-native-font" style="background-color: ${bgColor};">${message}</div>`);
+    const displayMsg = message.replace(/^(🐱|🐯)\s*/, `${emoji} `);
+    const notifyHtml = $(`<div class="cat-notification cat-native-font" style="background-color: ${bgColor};">${displayMsg}</div>`);
     $('body').append(notifyHtml);
     requestAnimationFrame(() => notifyHtml.addClass('show'));
 
@@ -38,10 +41,10 @@ export function catNotifyProgress(message, onAbort) {
     return el;
 }
 
-// 🚨 마스터 요청: 코드블록 내부 텍스트 및 YAML 들여쓰기 증발 완벽 방어!
+// 🚨 마스터 요청 반영: 코드블록 내부 텍스트 및 YAML 들여쓰기 증발 완벽 방어!
 export function cleanResult(text) {
     if (!text) return "";
-    // 코드박스는 절대 지우지 않고 접두사만 안전하게 잘라냅니다.
+    // 불필요한 번역 접두사만 제거하고 원본(코드박스 포함)은 절대 건드리지 않음
     return text.replace(/^(번역|Translation|Output|Input|Result):\s*/gi, "").trim();
 }
 
@@ -54,14 +57,23 @@ export function getModelTheme(modelName) {
     if (!modelName) return 'cat';
     const lower = modelName.toLowerCase();
     if (lower.includes('pro') || lower.includes('프로') || lower.includes('호랑이') || lower.includes('tiger')) return 'tiger';
+    if (lower.includes('flash') || lower.includes('플래') || lower.includes('플레') || lower.includes('고양이') || lower.includes('cat')) return 'cat';
     return 'cat';
 }
 
 export function detectLanguageDirection(text, settings) {
     const korCount = (text.match(/[가-힣]/g) || []).length;
     const engCount = (text.match(/[a-zA-Z]/g) || []).length;
-    if (korCount >= engCount) return { isToEnglish: true, targetLang: 'English' };
-    return { isToEnglish: false, targetLang: settings.targetLang || 'Korean' };
+    const jpCount = (text.match(/[\u3040-\u309F\u30A0-\u30FF]/g) || []).length;
+    const cnCount = (text.match(/[\u4E00-\u9FFF]/g) || []).length;
+    const total = korCount + engCount + jpCount + cnCount;
+
+    if (total === 0) return { isToEnglish: false, targetLang: settings.targetLang };
+    const korRatio = korCount / total; const engRatio = engCount / total;
+
+    if (korRatio >= 0.7) return { isToEnglish: true, targetLang: 'English' };
+    if (engRatio >= 0.7) return { isToEnglish: false, targetLang: 'Korean' };
+    return { isToEnglish: false, targetLang: settings.targetLang };
 }
 
 export function applyPreReplace(text, dictionary, isToEnglish) { return applyPreReplaceWithCount(text, dictionary, isToEnglish).swapped; }
