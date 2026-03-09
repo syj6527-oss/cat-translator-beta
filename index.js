@@ -39,48 +39,34 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
 
     if (mesBlock.find('.cat-mes-trans-btn .cat-emoji-icon.cat-glow-anim').length > 0) return;
     startGlow();
+    let historyShown = false;
 
     try {
         const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
-        // 🚨 swipe_id + 텍스트 이중 감지: ST 타이밍 문제 완벽 대응
-        let activeText = msg.mes;
-        if (msg.swipes !== undefined && msg.swipe_id !== undefined && msg.swipes[msg.swipe_id] !== undefined) {
-            activeText = msg.swipes[msg.swipe_id];
-        }
-
-        let textToTranslate;
-        let isStale = false;
-
-        if (msg.extra?.original_mes && msg.extra?.display_text) {
-            // swipe_id 비교 (1순위: 스와이프 넘김 감지)
-            if (msg.swipe_id !== undefined && msg.extra.cat_swipe_id !== undefined && msg.swipe_id !== msg.extra.cat_swipe_id) {
-                isStale = true;
-            // 텍스트 비교 (2순위: 수정/기타 변경 감지)
-            } else if (activeText !== msg.extra.display_text && activeText !== msg.extra.original_mes) {
-                isStale = true;
-            }
-        }
-
-        if (isStale) {
+        // 🚨 스와이프 감지: swipe_id만으로 판정 (텍스트 비교 없음)
+        if (msg.extra?.original_mes && msg.extra?.cat_swipe_id !== undefined &&
+            msg.swipe_id !== undefined && msg.swipe_id !== msg.extra.cat_swipe_id) {
+            // 스와이프 변경 → stale 데이터 전부 삭제
             delete msg.extra.original_mes;
             delete msg.extra.display_text;
             delete msg.extra.cat_swipe_id;
             mesBlock.removeAttr('data-cat-translated');
         }
 
-        const isShowingTranslation = !isStale && msg.extra?.display_text && msg.extra?.original_mes &&
-            (activeText === msg.extra.display_text || msg.mes === msg.extra.display_text);
-
-        if (isShowingTranslation) {
+        // 🚨 원본 결정: original_mes가 있으면 무조건 신뢰 (텍스트 비교 안 함)
+        let textToTranslate;
+        const hasTranslation = !!msg.extra?.original_mes;
+        
+        if (hasTranslation) {
             textToTranslate = msg.extra.original_mes;
         } else {
-            textToTranslate = activeText;
+            textToTranslate = msg.mes;
         }
 
-        const existingTranslation = isShowingTranslation ? msg.extra.display_text : null;
-        const isRetranslation = isShowingTranslation;
+        const existingTranslation = hasTranslation ? msg.extra.display_text : null;
+        const isRetranslation = hasTranslation;
 
         if (!silent && !isRetranslation) {
             const prefix = isAutoTriggered ? '자동 번역' : '번역';
@@ -93,19 +79,21 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
             const modelKey = getCacheModelKey(settings);
             const shown = await showHistoryPopup(textToTranslate, detected.targetLang, anchorEl, async (selectedText, isNew) => {
                 if (isNew) {
-                    // 히스토리 팝업에서 새로 번역 → 자체 글로우 관리 (processMessage의 finally가 먼저 실행되므로)
                     startGlow();
                     try {
                         await doTranslateMessage(msgId, msg, textToTranslate, isInput, existingTranslation, abortSignal, true);
                     } finally { stopGlow(); }
                 } else if (selectedText) {
-                    if (!msg.extra) msg.extra = {}; msg.extra.display_text = selectedText; msg.mes = selectedText; stContext.updateMessageBlock(msgId, msg);
+                    if (!msg.extra) msg.extra = {}; msg.extra.display_text = selectedText; msg.mes = selectedText;
+                    // swipes 배열도 동기화
+                    if (msg.swipes && msg.swipe_id !== undefined) msg.swipes[msg.swipe_id] = selectedText;
+                    stContext.updateMessageBlock(msgId, msg);
                 }
             }, modelKey);
-            if (shown) return; 
+            if (shown) { historyShown = true; return; }
         }
         await doTranslateMessage(msgId, msg, textToTranslate, isInput, existingTranslation, abortSignal, silent);
-    } finally { stopGlow(); }
+    } finally { if (!historyShown) stopGlow(); }
 }
 
 async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTranslation, abortSignal, silent = false) {
@@ -121,6 +109,11 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
         msg.extra.display_text = result.text;
         if (msg.swipe_id !== undefined) msg.extra.cat_swipe_id = msg.swipe_id;
         msg.mes = result.text;
+        
+        // 🚨 swipes 배열 직접 동기화 — ST 갱신 문제 원천 차단
+        if (msg.swipes && msg.swipe_id !== undefined) {
+            msg.swipes[msg.swipe_id] = result.text;
+        }
         
         $(`.mes[mesid="${msgId}"]`).attr('data-cat-translated', 'true');
 
@@ -178,7 +171,12 @@ function revertMessage(id) {
     const editArea = $(`.mes[mesid="${msgId}"]`).find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
     if (editArea.length > 0) { const originalText = editArea.data('cat-original-text'); if (originalText) { setTextareaValue(editArea[0], originalText); editArea.removeData('cat-original-text').removeData('cat-last-translated').removeData('cat-last-target-lang'); catNotify(`${getThemeEmoji()} 원본 텍스트로 복구 완료!`, "success"); } else { catNotify("⚠️ 복구할 원본이 없습니다.", "warning"); } return; }
     if (msg.extra?.display_text) delete msg.extra.display_text;
-    if (msg.extra?.original_mes) { msg.mes = msg.extra.original_mes; delete msg.extra.original_mes; }
+    if (msg.extra?.original_mes) {
+        msg.mes = msg.extra.original_mes;
+        // swipes 배열도 원문으로 복구
+        if (msg.swipes && msg.swipe_id !== undefined) msg.swipes[msg.swipe_id] = msg.extra.original_mes;
+        delete msg.extra.original_mes;
+    }
     if (msg.extra?.cat_swipe_id !== undefined) delete msg.extra.cat_swipe_id;
     
     $(`.mes[mesid="${msgId}"]`).removeAttr('data-cat-translated');
@@ -195,4 +193,5 @@ jQuery(async () => {
     const bodyObserver = new MutationObserver(() => { applyTheme(getModelTheme(settings.directModel)); }); bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     console.log('[CAT] 🐱 Translator v1.0.1 로드 완료!');
 });
+
 
