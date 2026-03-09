@@ -44,18 +44,24 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
         const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
-        // 🚨 스와이프/수정 감지: 현재 mes가 이전 번역/원본과 다르면 stale → 초기화
-        if (msg.extra?.original_mes && msg.extra?.display_text) {
-            if (msg.mes !== msg.extra.display_text && msg.mes !== msg.extra.original_mes) {
-                delete msg.extra.original_mes;
-                delete msg.extra.display_text;
-                mesBlock.removeAttr('data-cat-translated');
-            }
+        // 🚨 핵심 로직: 현재 msg.mes가 번역문(display_text)인지 판별
+        // - 번역문이면 → original_mes에서 재번역/히스토리
+        // - 번역문이 아니면 → 스와이프/수정 등으로 바뀐 새 텍스트 → msg.mes 그대로 번역
+        let textToTranslate;
+        const isShowingTranslation = msg.extra?.display_text && msg.mes === msg.extra.display_text;
+        
+        if (isShowingTranslation) {
+            textToTranslate = msg.extra.original_mes;
+        } else {
+            // 새 스와이프, 수정, 첫 번역 → stale 데이터 정리 후 현재 mes 사용
+            if (msg.extra?.original_mes) delete msg.extra.original_mes;
+            if (msg.extra?.display_text) delete msg.extra.display_text;
+            mesBlock.removeAttr('data-cat-translated');
+            textToTranslate = msg.mes;
         }
         
-        let textToTranslate = msg.extra?.original_mes || msg.mes;
-        const existingTranslation = msg.extra?.display_text || null;
-        const isRetranslation = !!existingTranslation;
+        const existingTranslation = isShowingTranslation ? msg.extra.display_text : null;
+        const isRetranslation = isShowingTranslation;
 
         if (!silent && !isRetranslation) {
             const prefix = isAutoTriggered ? '자동 번역' : '번역';
