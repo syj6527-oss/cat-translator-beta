@@ -44,22 +44,40 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
         const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
-        // 🚨 핵심 로직: 현재 msg.mes가 번역문(display_text)인지 판별
-        // - 번역문이면 → original_mes에서 재번역/히스토리
-        // - 번역문이 아니면 → 스와이프/수정 등으로 바뀐 새 텍스트 → msg.mes 그대로 번역
+        // 🚨 swipe_id + 텍스트 이중 감지: ST 타이밍 문제 완벽 대응
+        let activeText = msg.mes;
+        if (msg.swipes !== undefined && msg.swipe_id !== undefined && msg.swipes[msg.swipe_id] !== undefined) {
+            activeText = msg.swipes[msg.swipe_id];
+        }
+
         let textToTranslate;
-        const isShowingTranslation = msg.extra?.display_text && msg.mes === msg.extra.display_text;
-        
+        let isStale = false;
+
+        if (msg.extra?.original_mes && msg.extra?.display_text) {
+            // swipe_id 비교 (1순위: 스와이프 넘김 감지)
+            if (msg.swipe_id !== undefined && msg.extra.cat_swipe_id !== undefined && msg.swipe_id !== msg.extra.cat_swipe_id) {
+                isStale = true;
+            // 텍스트 비교 (2순위: 수정/기타 변경 감지)
+            } else if (activeText !== msg.extra.display_text && activeText !== msg.extra.original_mes) {
+                isStale = true;
+            }
+        }
+
+        if (isStale) {
+            delete msg.extra.original_mes;
+            delete msg.extra.display_text;
+            delete msg.extra.cat_swipe_id;
+            mesBlock.removeAttr('data-cat-translated');
+        }
+
+        const isShowingTranslation = !isStale && msg.extra?.display_text && activeText === msg.extra.display_text;
+
         if (isShowingTranslation) {
             textToTranslate = msg.extra.original_mes;
         } else {
-            // 새 스와이프, 수정, 첫 번역 → stale 데이터 정리 후 현재 mes 사용
-            if (msg.extra?.original_mes) delete msg.extra.original_mes;
-            if (msg.extra?.display_text) delete msg.extra.display_text;
-            mesBlock.removeAttr('data-cat-translated');
-            textToTranslate = msg.mes;
+            textToTranslate = activeText;
         }
-        
+
         const existingTranslation = isShowingTranslation ? msg.extra.display_text : null;
         const isRetranslation = isShowingTranslation;
 
@@ -96,6 +114,7 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
         if (!msg.extra) msg.extra = {};
         if (!msg.extra.original_mes) msg.extra.original_mes = textToTranslate;
         msg.extra.display_text = result.text;
+        if (msg.swipe_id !== undefined) msg.extra.cat_swipe_id = msg.swipe_id;
         msg.mes = result.text;
         
         $(`.mes[mesid="${msgId}"]`).attr('data-cat-translated', 'true');
@@ -117,12 +136,16 @@ async function handleEditAreaTranslation(editArea, msgId, abortSignal) {
     // 🚨 stale 감지: 현재 텍스트가 이전 번역/원본 둘 다 아니면 새 세션 → 초기화
     if (originalText && lastTranslated && currentText !== lastTranslated && currentText !== originalText) {
         editArea.removeData('cat-original-text').removeData('cat-last-translated').removeData('cat-last-target-lang');
+        // 강제 데이터 덮어쓰기로 좀비 데이터 완벽 사살
+        editArea.data('cat-original-text', '');
+        editArea.data('cat-last-translated', '');
+        editArea.data('cat-last-target-lang', '');
     }
     
     const freshOriginal = editArea.data('cat-original-text');
     const freshLastTranslated = editArea.data('cat-last-translated');
     const freshLastTargetLang = editArea.data('cat-last-target-lang');
-    const isRetry = (freshLastTranslated && currentText === freshLastTranslated);
+    const isRetry = (freshLastTranslated && freshOriginal && currentText === freshLastTranslated);
     const textToTranslate = isRetry ? freshOriginal : currentText; const forceLang = isRetry ? freshLastTargetLang : null; const prevTrans = isRetry ? currentText : null;
     catNotify(isRetry ? `${getThemeEmoji()} 다른 표현으로 재번역 중...` : `${getThemeEmoji()} 스마트 번역 중...`, "success");
     const contextRange = parseInt(settings.contextRange) || 1; const contextMsgs = gatherContextMessages(msgId, stContext, contextRange);
@@ -136,6 +159,7 @@ function revertMessage(id) {
     if (editArea.length > 0) { const originalText = editArea.data('cat-original-text'); if (originalText) { setTextareaValue(editArea[0], originalText); editArea.removeData('cat-original-text').removeData('cat-last-translated').removeData('cat-last-target-lang'); catNotify(`${getThemeEmoji()} 원본 텍스트로 복구 완료!`, "success"); } else { catNotify("⚠️ 복구할 원본이 없습니다.", "warning"); } return; }
     if (msg.extra?.display_text) delete msg.extra.display_text;
     if (msg.extra?.original_mes) { msg.mes = msg.extra.original_mes; delete msg.extra.original_mes; }
+    if (msg.extra?.cat_swipe_id !== undefined) delete msg.extra.cat_swipe_id;
     
     $(`.mes[mesid="${msgId}"]`).removeAttr('data-cat-translated');
     
