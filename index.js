@@ -137,6 +137,10 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
 async function handleEditAreaTranslation(editArea, msgId, abortSignal) {
     let currentText = editArea.val().trim(); if (!currentText) return;
     
+    // 🚨 DOM에서 긁혀온 hidden comment 제거 (이전 메시지 코드블록 혼입 방지)
+    currentText = currentText.replace(/<!--[\s\S]*?-->/g, '').trim();
+    if (!currentText) return;
+    
     // 🚨 수정창에 번역문이 채워져 있는 경우 감지 → original_mes 사용
     // 코드박스 등 추가 콘텐츠가 붙어있을 수 있으므로 앞부분 매칭으로 판별
     const msg = stContext.chat[msgId];
