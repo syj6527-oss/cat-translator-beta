@@ -130,20 +130,16 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
 async function handleEditAreaTranslation(editArea, msgId, abortSignal) {
     let currentText = editArea.val().trim(); if (!currentText) return;
     
-    // 🚨 DOM에서 긁혀온 hidden comment 제거 (이전 메시지 코드블록 혼입 방지)
+    // 🚨 DOM에서 긁혀온 hidden comment 제거
     currentText = currentText.replace(/<!--[\s\S]*?-->/g, '').trim();
     if (!currentText) return;
     
-    // 🚨 수정창에 번역문이 채워져 있는 경우 감지 → original_mes 사용
-    // + 직전 아웃풋이 뒤에 딸려온 경우 → msg 기준으로 잘라내기
     const msg = stContext.chat[msgId];
     
-    // ST가 DOM에서 긁어올 때 직전 아웃풋까지 딸려오는 문제 차단
-    // msg.mes 또는 original_mes와 비교하여 해당 메시지 범위만 추출
+    // 🚨 직전 아웃풋 딸려오기 차단: msg 기준으로 비정상 길이 감지
     if (msg) {
         const knownText = msg.extra?.display_text || msg.extra?.original_mes || msg.mes;
         if (knownText && currentText.length > knownText.length * 1.5) {
-            // 현재 textarea가 알려진 텍스트보다 1.5배 이상 길면 → 뒤에 딸려온 게 있음
             const knownPrefix = knownText.substring(0, Math.min(50, knownText.length));
             if (currentText.startsWith(knownPrefix)) {
                 currentText = knownText;
@@ -151,33 +147,45 @@ async function handleEditAreaTranslation(editArea, msgId, abortSignal) {
         }
     }
     
-    if (msg?.extra?.original_mes && msg?.extra?.display_text) {
-        const displayPrefix = msg.extra.display_text.substring(0, Math.min(50, msg.extra.display_text.length));
-        if (currentText === msg.extra.display_text || currentText.startsWith(displayPrefix)) {
-            currentText = msg.extra.original_mes;
+    // 🚨 핵심: msg.extra.original_mes가 있으면 무조건 신뢰 (영구 원본)
+    // 수정창에 번역문이 채워져 있어도 항상 original_mes 기준으로 번역
+    let sourceText = currentText;
+    let isReTranslation = false;
+    
+    if (msg?.extra?.original_mes) {
+        // original_mes가 존재 = 이미 번역된 적 있음
+        if (currentText === msg.extra.display_text || 
+            currentText === msg.extra.original_mes ||
+            currentText === msg.mes) {
+            // 수정 안 함 → original_mes에서 재번역
+            sourceText = msg.extra.original_mes;
+            isReTranslation = true;
         }
+        // currentText가 위 셋 다 아님 → 사용자가 직접 수정한 새 텍스트 → sourceText = currentText 그대로
     }
     
-    const lastTranslated = editArea.data('cat-last-translated'); const originalText = editArea.data('cat-original-text'); const lastTargetLang = editArea.data('cat-last-target-lang');
+    const prevTrans = isReTranslation ? (msg.extra?.display_text || null) : null;
+    catNotify(isReTranslation ? `${getThemeEmoji()} 다른 표현으로 재번역 중...` : `${getThemeEmoji()} 스마트 번역 중...`, "success");
     
-    // 🚨 stale 감지: 현재 텍스트가 이전 번역/원본 둘 다 아니면 새 세션 → 초기화
-    if (originalText && lastTranslated && currentText !== lastTranslated && currentText !== originalText) {
-        editArea.removeData('cat-original-text').removeData('cat-last-translated').removeData('cat-last-target-lang');
-        // 강제 데이터 덮어쓰기로 좀비 데이터 완벽 사살
-        editArea.data('cat-original-text', '');
-        editArea.data('cat-last-translated', '');
-        editArea.data('cat-last-target-lang', '');
+    const contextRange = parseInt(settings.contextRange) || 1;
+    const contextMsgs = gatherContextMessages(msgId, stContext, contextRange);
+    const result = await fetchTranslation(sourceText, settings, stContext, { forceLang: null, prevTranslation: prevTrans, contextMessages: contextMsgs, abortSignal });
+    
+    if (result && result.text !== currentText) {
+        // editArea jQuery 데이터 저장 (세션 내)
+        editArea.data('cat-original-text', sourceText);
+        editArea.data('cat-last-translated', result.text);
+        editArea.data('cat-last-target-lang', result.lang);
+        
+        // 🚨 msg.extra에도 영구 저장 (수정창 닫았다 다시 열어도 유지)
+        if (!msg.extra) msg.extra = {};
+        if (!msg.extra.original_mes) msg.extra.original_mes = sourceText;
+        msg.extra.display_text = result.text;
+        if (msg.swipe_id !== undefined) msg.extra.cat_swipe_id = msg.swipe_id;
+        
+        setTextareaValue(editArea[0], result.text);
+        catNotify(isReTranslation ? `${getCompletionEmoji()} 재번역 덮어쓰기 완료!` : `${getCompletionEmoji()} 번역 덮어쓰기 완료!`, "success");
     }
-    
-    const freshOriginal = editArea.data('cat-original-text');
-    const freshLastTranslated = editArea.data('cat-last-translated');
-    const freshLastTargetLang = editArea.data('cat-last-target-lang');
-    const isRetry = (freshLastTranslated && freshOriginal && currentText === freshLastTranslated);
-    const textToTranslate = isRetry ? freshOriginal : currentText; const forceLang = isRetry ? freshLastTargetLang : null; const prevTrans = isRetry ? currentText : null;
-    catNotify(isRetry ? `${getThemeEmoji()} 다른 표현으로 재번역 중...` : `${getThemeEmoji()} 스마트 번역 중...`, "success");
-    const contextRange = parseInt(settings.contextRange) || 1; const contextMsgs = gatherContextMessages(msgId, stContext, contextRange);
-    const result = await fetchTranslation(textToTranslate, settings, stContext, { forceLang, prevTranslation: prevTrans, contextMessages: contextMsgs, abortSignal });
-    if (result && result.text !== currentText) { editArea.data('cat-original-text', textToTranslate); editArea.data('cat-last-translated', result.text); editArea.data('cat-last-target-lang', result.lang); setTextareaValue(editArea[0], result.text); catNotify(isRetry ? `${getCompletionEmoji()} 재번역 덮어쓰기 완료!` : `${getCompletionEmoji()} 번역 덮어쓰기 완료!`, "success"); }
 }
 
 function revertMessage(id) {
