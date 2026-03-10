@@ -152,15 +152,15 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     // 아이콘 표시 초기값 + 토글 로직
     $('#ct-icon-visibility').val(settings.iconVisibility || 'all').on('change', function() {
         const val = $(this).val();
-        if (val === 'hide-input') { $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').hide(); $('.cat-btn-group').show(); }
-        else if (val === 'hide-message') { $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').show(); $('.cat-btn-group').hide(); }
-        else { $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').show(); $('.cat-btn-group').show(); }
+        if (val === 'hide-input') { $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').hide(); $('.cat-btn-group').removeClass('cat-hidden'); }
+        else if (val === 'hide-message') { $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').show(); $('.cat-btn-group').addClass('cat-hidden'); }
+        else { $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').show(); $('.cat-btn-group').removeClass('cat-hidden'); }
         autoSave();
     });
     // 초기 적용
     const initIconVis = settings.iconVisibility || 'all';
     if (initIconVis === 'hide-input') { setTimeout(() => $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').hide(), 500); }
-    else if (initIconVis === 'hide-message') { setTimeout(() => $('.cat-btn-group').hide(), 500); }
+    else if (initIconVis === 'hide-message') { setTimeout(() => $('.cat-btn-group').addClass('cat-hidden'), 500); }
     
     $('#ct-dictionary').on('input', function () {
         settings.dictionary = $(this).val();
@@ -185,7 +185,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         $('#ct-temperature').val(0.3); $('#ct-max-tokens').val(8192); $('#ct-context-range').val(1);
         $('#ct-user-prompt').val(''); $('#ct-dictionary').val(''); $('#ct-dict-reset').text('📭');
         $('#ct-direct-settings').show(); $('#ct-vertex-extra').hide();
-        $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn, .cat-btn-group').show();
+        $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').show(); $('.cat-btn-group').removeClass('cat-hidden');
         saveSettingsFn(); catNotify(`${getThemeEmoji()} 설정이 초기화되었습니다!`, "success");
     });
     $('#ct-export').on('click', () => { saveSettingsFn(); exportSettings(settings); catNotify(`${getThemeEmoji()} 설정 내보내기 완료!`, "success"); });
@@ -287,7 +287,7 @@ export function injectMessageButtons(processMessageFn, revertMessageFn) {
     });
     // 🚨 메시지 아이콘 숨김 설정 적용
     const vis = $('#ct-icon-visibility').val() || 'all';
-    if (vis === 'hide-message') { $('.cat-btn-group').hide(); }
+    if (vis === 'hide-message') { $('.cat-btn-group').addClass('cat-hidden'); }
     if (!window._catMesBtnDelegated) {
         window._catMesBtnDelegated = true;
         $(document).on('click', '.cat-mes-trans-btn', function (e) { e.stopPropagation(); const msgId = $(this).data('mesid') || $(this).closest('.mes').attr('mesid'); const isUser = $(this).closest('.mes').hasClass('mes_user'); if (msgId !== undefined) processMessageFn(msgId, isUser); });

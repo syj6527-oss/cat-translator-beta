@@ -51,6 +51,7 @@
     align-items: center !important;
     vertical-align: middle !important;
 }
+.cat-btn-group.cat-hidden { display: none !important; }
 
 .cat-mes-trans-btn, .cat-mes-revert-btn { cursor: pointer; font-size: 1.3em; opacity: 0.8; transition: opacity 0.2s, transform 0.2s; }
 .cat-mes-trans-btn:hover, .cat-mes-revert-btn:hover { opacity: 1; transform: scale(1.15); }
