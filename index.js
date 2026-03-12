@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Translator v1.0.1
+// 🐱 Translator v1.0.2
 // ============================================================
 import { extension_settings, getContext } from '../../../../scripts/extensions.js';
 import { catNotify, getThemeEmoji, getCompletionEmoji, setTextareaValue, getModelTheme, detectLanguageDirection, getCacheModelKey } from './utils.js';
@@ -42,7 +42,7 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
     let historyShown = false;
 
     try {
-        const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible, textarea:visible').first();
+        const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
         // 🚨 스와이프 감지: swipe_id만으로 판정 (텍스트 비교 없음)
@@ -97,7 +97,9 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
 }
 
 async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTranslation, abortSignal, silent = false) {
-    const forceLang = null;
+    const source = msg.extra?.original_mes || textToTranslate;
+    const detected = detectLanguageDirection(source, settings);
+    const forceLang = detected.targetLang;
     const contextRange = parseInt(settings.contextRange) || 1;
     const contextMsgs = gatherContextMessages(msgId, stContext, contextRange);
 
@@ -105,13 +107,14 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
 
     if (result && result.text && result.text.trim() && result.text !== textToTranslate) {
         if (!msg.extra) msg.extra = {};
+        const isFirstTranslation = !msg.extra.original_mes;
         if (!msg.extra.original_mes) msg.extra.original_mes = textToTranslate;
         msg.extra.display_text = result.text;
         if (msg.swipe_id !== undefined) msg.extra.cat_swipe_id = msg.swipe_id;
         msg.mes = result.text;
         
-        // 🚨 swipes 배열 직접 동기화 — ST 갱신 문제 원천 차단
-        if (msg.swipes && msg.swipe_id !== undefined) {
+        // 🚨 swipes 배열 직접 동기화 — 첫 번역 시에만 (재번역 시 원본 보존)
+        if (msg.swipes && msg.swipe_id !== undefined && isFirstTranslation) {
             msg.swipes[msg.swipe_id] = result.text;
         }
         
@@ -147,14 +150,18 @@ async function handleEditAreaTranslation(editArea, msgId, abortSignal) {
         }
     }
     
+    // 🚨 textarea 오염 방지: 이전 콘텐츠가 현재 메시지에 섞여 들어온 경우
+    if (msg && msg.mes && currentText.includes(msg.mes) && currentText !== msg.mes) {
+        currentText = msg.mes;
+    }
+    
     // 🚨 핵심: 재번역 vs 새 번역 판별
     let sourceText = currentText;
     let isReTranslation = false;
     
     if (msg?.extra?.original_mes) {
         if (currentText === msg.extra.display_text || 
-            currentText === msg.extra.original_mes ||
-            currentText === msg.mes) {
+            currentText === msg.extra.original_mes) {
             // 수정 안 함 → original_mes에서 재번역
             sourceText = msg.extra.original_mes;
             isReTranslation = true;
@@ -215,6 +222,6 @@ jQuery(async () => {
     stContext.eventSource.on(stContext.event_types.CHARACTER_MESSAGE_RENDERED, (d) => { if (settings.autoMode === 'none' || settings.autoMode === 'input') return; const msgId = typeof d === 'object' ? d.messageId : d; setTimeout(() => processMessage(msgId, false, null, false, true), 500); });
     stContext.eventSource.on(stContext.event_types.USER_MESSAGE_RENDERED, (d) => { if (settings.autoMode === 'none' || settings.autoMode === 'output') return; const msgId = typeof d === 'object' ? d.messageId : d; setTimeout(() => processMessage(msgId, true, null, false, true), 500); });
     const bodyObserver = new MutationObserver(() => { applyTheme(getModelTheme(settings.directModel)); }); bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    console.log('[CAT] 🐱 Translator v1.0.1 로드 완료!');
+    console.log('[CAT] 🐱 Translator v1.0.2 로드 완료!');
 });
 

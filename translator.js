@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Translator v1.0.1 - translator.js
+// 🐱 Translator v1.0.2 - translator.js
 // ============================================================
 import { secret_state, SECRET_KEYS } from '../../../../scripts/secrets.js';
 import { cleanResult, catNotify, detectLanguageDirection, getThemeEmoji, getCompletionEmoji, getCacheModelKey } from './utils.js';
