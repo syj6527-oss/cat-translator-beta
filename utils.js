@@ -87,8 +87,13 @@ export function cleanResult(text) {
 }
 
 export function getCacheModelKey(settings) {
-    if (settings.profile) return `profile:${settings.profile}`;
-    return settings.directModel || 'default';
+    let key;
+    if (settings.profile) key = `profile:${settings.profile}`;
+    else key = settings.directModel || 'default';
+    if (settings.dialogueBilingual && settings.dialogueBilingual !== 'off') {
+        key += `::bilingual:${settings.dialogueBilingual}`;
+    }
+    return key;
 }
 
 export function getModelTheme(modelName) {

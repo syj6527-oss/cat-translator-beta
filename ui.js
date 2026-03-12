@@ -62,7 +62,10 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
                 <div class="cat-setting-row" style="flex:1;"><label>자동 번역</label><select id="ct-auto-mode" class="text_pole"><option value="none">꺼짐</option><option value="input">입력만</option><option value="output">출력만</option><option value="both">둘 다</option></select></div>
                 <div class="cat-setting-row" style="flex:1;"><label>양방향 번역</label><select id="ct-bidirectional" class="text_pole"><option value="off">꺼짐</option><option value="ko-en">한↔영</option><option value="ko-ja">한↔일</option><option value="ko-zh">한↔중</option></select></div>
             </div>
-            <div class="cat-setting-row"><label>목표 언어 (AI 기본)</label><select id="ct-lang" class="text_pole">${langOptions}</select></div>
+            <div style="display:flex; gap:8px;">
+                <div class="cat-setting-row" style="flex:1;"><label>목표 언어 (AI 기본)</label><select id="ct-lang" class="text_pole">${langOptions}</select></div>
+                <div class="cat-setting-row" style="flex:1;"><label>대사 병기</label><select id="ct-dialogue-bilingual" class="text_pole"><option value="off">꺼짐</option><option value="ko-en">한영 병기</option><option value="ko-ja">한일 병기</option><option value="ko-zh">한중 병기</option></select></div>
+            </div>
             <div style="display:flex; gap:8px;">
                 <div class="cat-setting-row" style="flex:1;"><label>스타일</label><select id="ct-style" class="text_pole">${styleOptions}</select></div>
                 <div class="cat-setting-row" style="width:80px;"><label>온도</label><input type="number" id="ct-temperature" class="text_pole" value="${settings.temperature || ''}" min="0" max="1" step="0.1" placeholder="0.0~1.0"></div>
@@ -114,7 +117,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     };
     
     // 모든 설정 필드에 자동 저장 연결
-    $('#ct-profile, #ct-auto-mode, #ct-bidirectional, #ct-lang, #ct-style, #ct-temperature, #ct-max-tokens, #ct-context-range, #ct-vertex-region').on('change', autoSave);
+    $('#ct-profile, #ct-auto-mode, #ct-bidirectional, #ct-dialogue-bilingual, #ct-lang, #ct-style, #ct-temperature, #ct-max-tokens, #ct-context-range, #ct-vertex-region').on('change', autoSave);
     $('#ct-key, #ct-vertex-key, #ct-vertex-project, #ct-model-custom, #ct-user-prompt, #ct-dictionary').on('input', autoSave);
     
     $('#ct-model').val(settings.directModel).on('change', function () {
@@ -147,7 +150,15 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         }
     });
     $('#ct-style').val(settings.style || 'normal').on('change', function () { const preset = STYLE_PRESETS[$(this).val()]; if (preset) $('#ct-temperature').val(preset.temperature); });
-    $('#ct-auto-mode').val(settings.autoMode); $('#ct-bidirectional').val(settings.bidirectional || 'off'); $('#ct-lang').val(settings.targetLang); $('#ct-temperature').val(settings.temperature || 0.3);
+    $('#ct-auto-mode').val(settings.autoMode); $('#ct-bidirectional').val(settings.bidirectional || 'off'); $('#ct-dialogue-bilingual').val(settings.dialogueBilingual || 'off'); $('#ct-lang').val(settings.targetLang); $('#ct-temperature').val(settings.temperature || 0.3);
+    
+    // 대사 병기 변경 시 알림
+    $('#ct-dialogue-bilingual').on('change', function() {
+        const val = $(this).val();
+        const labels = { 'off': '꺼짐', 'ko-en': '한영 병기', 'ko-ja': '한일 병기', 'ko-zh': '한중 병기' };
+        if (val !== 'off') { catNotify(`${getThemeEmoji()} 대사 병기: ${labels[val]} 모드 활성화!`, "success"); }
+        else { catNotify(`${getThemeEmoji()} 대사 병기 꺼짐`, "success"); }
+    });
     
     // 아이콘 표시 초기값 + 토글 로직
     $('#ct-icon-visibility').val(settings.iconVisibility || 'all').on('change', function() {
@@ -181,7 +192,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         if (!confirm('모든 설정을 초기값으로 되돌리시겠습니까?')) return;
         $('#ct-profile').val(''); $('#ct-key').val(''); $('#ct-vertex-key').val(''); $('#ct-vertex-project').val('');
         $('#ct-vertex-region').val('global'); $('#ct-model').val('gemini-2.0-flash'); $('#ct-model-custom').val('').hide();
-        $('#ct-auto-mode').val('none'); $('#ct-bidirectional').val('off'); $('#ct-icon-visibility').val('all'); $('#ct-lang').val('Korean'); $('#ct-style').val('normal');
+        $('#ct-auto-mode').val('none'); $('#ct-bidirectional').val('off'); $('#ct-dialogue-bilingual').val('off'); $('#ct-icon-visibility').val('all'); $('#ct-lang').val('Korean'); $('#ct-style').val('normal');
         $('#ct-temperature').val(0.3); $('#ct-max-tokens').val(8192); $('#ct-context-range').val(1);
         $('#ct-user-prompt').val(''); $('#ct-dictionary').val(''); $('#ct-dict-reset').text('📭');
         $('#ct-direct-settings').show(); $('#ct-vertex-extra').hide();
@@ -210,7 +221,7 @@ export function collectSettings() {
         vertexRegion: $('#ct-vertex-region').val() || 'global',
         directModel: modelVal === 'custom' ? ($('#ct-model-custom').val() || 'gemini-2.0-flash') : (modelVal || 'gemini-1.5-flash'),
         customModelName: $('#ct-model-custom').val() || '', autoMode: $('#ct-auto-mode').val() || 'none',
-        bidirectional: $('#ct-bidirectional').val() || 'off', iconVisibility: $('#ct-icon-visibility').val() || 'all',
+        bidirectional: $('#ct-bidirectional').val() || 'off', dialogueBilingual: $('#ct-dialogue-bilingual').val() || 'off', iconVisibility: $('#ct-icon-visibility').val() || 'all',
         targetLang: $('#ct-lang').val() || 'Korean', style: $('#ct-style').val() || 'normal',
         temperature: parseFloat($('#ct-temperature').val()) || 0.3, maxTokens: parseInt($('#ct-max-tokens').val()) || 8192,
         contextRange: Math.min(6, Math.max(0, parseInt($('#ct-context-range').val()) || 1)),
@@ -267,7 +278,10 @@ export function injectInputButtons(settings, stContext, processMessageFn) {
             
             const contextRange = parseInt(settings.contextRange) || 1; const lastMsgId = stContext.chat.length - 1;
             const contextMsgs = gatherContextMessages(lastMsgId + 1, stContext, contextRange);
-            const result = await fetchTranslation(textToTranslate, settings, stContext, { forceLang, prevTranslation: prevTrans, contextMessages: contextMsgs });
+            const bilingualInputLangMap = { 'ko-en': 'English', 'ko-ja': 'Japanese', 'ko-zh': 'Chinese' };
+            const inputTargetLang = (settings.dialogueBilingual && settings.dialogueBilingual !== 'off') ? (bilingualInputLangMap[settings.dialogueBilingual] || settings.targetLang) : settings.targetLang;
+            const inputSettings = { ...settings, dialogueBilingual: 'off', targetLang: inputTargetLang };
+            const result = await fetchTranslation(textToTranslate, inputSettings, stContext, { forceLang, prevTranslation: prevTrans, contextMessages: contextMsgs });
             if (result && result.text && result.text !== currentText) {
                 sendArea.data('cat-original-text', textToTranslate); sendArea.data('cat-last-translated', result.text); sendArea.data('cat-last-target-lang', result.lang);
                 setTextareaValue(sendArea[0], result.text);

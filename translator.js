@@ -157,12 +157,46 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
 
 function assemblePrompt(text, targetLang, isToEnglish, settings, options = {}) {
     const { prevTranslation, contextMessages = [] } = options;
-    if (text.length < 100 && !prevTranslation && contextMessages.length === 0 && (!settings.dictionary || !settings.dictionary.trim())) {
+    const bilingualMode = settings.dialogueBilingual || 'off';
+    
+    // 🚨 병기 모드 ON이면 짧은 텍스트도 풀 프롬프트 경로 강제 사용
+    if (bilingualMode === 'off' && text.length < 100 && !prevTranslation && contextMessages.length === 0 && (!settings.dictionary || !settings.dictionary.trim())) {
         const lang = isToEnglish ? 'English' : targetLang; return `${text}\n\n(Translate the above to ${lang}. Reply with ONLY the translation. Keep all formatting exactly.)`;
     }
     let parts = [SYSTEM_SHIELD];
     const preset = STYLE_PRESETS[settings.style] || STYLE_PRESETS.normal; parts.push(`[Style: ${preset.prompt}]`);
+    
+    // 🚨 병기 모드 ON이면 지문 번역 방향을 Korean으로 강제 (목표 언어 설정과 무관하게)
+    if (bilingualMode !== 'off') { targetLang = 'Korean'; isToEnglish = false; }
+    
     if (isToEnglish) { parts.push(`Translate the following into English.`); } else { parts.push(`Translate the following into ${targetLang}.`); }
+    
+    // 🚨 대사 병기 모드 프롬프트 삽입
+    if (bilingualMode !== 'off') {
+        const bilingualLangMap = {
+            'ko-en': { srcLabel: 'English', tgtLabel: '한국어', exSrc: 'I bought a mattress for you.', exTgt: '널 위해 매트리스를 샀어.', exNarSrc: 'He clenched his jaw.', exNarTgt: '그는 이를 악물었다.' },
+            'ko-ja': { srcLabel: 'Japanese', tgtLabel: '한국어', exSrc: 'あなたのためにマットレスを買ったんだ。', exTgt: '널 위해 매트리스를 샀어.', exNarSrc: '彼は歯を食いしばった。', exNarTgt: '그는 이를 악물었다.' },
+            'ko-zh': { srcLabel: 'Chinese', tgtLabel: '한국어', exSrc: '我给你买了床垫。', exTgt: '널 위해 매트리스를 샀어.', exNarSrc: '他咬紧了牙关。', exNarTgt: '그는 이를 악물었다.' }
+        };
+        const bl = bilingualLangMap[bilingualMode] || bilingualLangMap['ko-en'];
+        parts.push(`
+[BILINGUAL DIALOGUE MODE - HIGHEST PRIORITY]
+This rule OVERRIDES all other translation instructions for quoted dialogue.
+1. Narration/description (text OUTSIDE quotation marks ""): Translate into ${bl.tgtLabel} normally.
+2. Dialogue (text INSIDE quotation marks ""): Keep the ORIGINAL ${bl.srcLabel} text intact, then append ${bl.tgtLabel} translation inside [] BEFORE the closing quotation mark.
+3. Format: "Original dialogue. [${bl.tgtLabel} 번역.]"
+4. Apply this to EVERY quoted dialogue without exception. Do NOT skip any.
+5. Other quote styles (「」, 『』, "") follow the same rule.
+
+[EXAMPLES]
+Source: ${bl.exNarSrc} "${bl.exSrc}"
+Output: ${bl.exNarTgt} "${bl.exSrc} [${bl.exTgt}]"
+
+Source: ${bl.exNarSrc} "${bl.exSrc}" ${bl.exNarSrc}. "${bl.exSrc}"
+Output: ${bl.exNarTgt} "${bl.exSrc} [${bl.exTgt}]" ${bl.exNarTgt}. "${bl.exSrc} [${bl.exTgt}]"
+`);
+    }
+    
     if (settings.userPrompt && settings.userPrompt.trim()) { parts.push(`[Additional instructions: ${settings.userPrompt.trim()}]`); }
     
     if (settings.dictionary && settings.dictionary.trim()) {
