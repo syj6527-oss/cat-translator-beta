@@ -60,7 +60,7 @@ export function catNotifyProgress(message, onAbort) {
 }
 
 // 🚨 정밀 클리너: AI가 추가한 래핑만 제거, 원본 코드블록/YAML 보존!
-export function cleanResult(text) {
+export function cleanResult(text, originalText = null) {
     if (!text) return "";
     
     // AI가 앞에 붙이는 "번역:" 등 접두어 제거
@@ -75,6 +75,26 @@ export function cleanResult(text) {
         // 내부에 ``` 가 있으면 = 원본 코드블록 포함 → 건드리지 않음
         if (!inner.includes('```')) {
             cleaned = inner;
+        }
+    }
+    
+    // 🚨 AI 생성모드 감지: 번역이 아닌 RP 이어쓰기/시스템 프롬프트 번역 방지
+    if (originalText) {
+        const ratio = cleaned.length / originalText.length;
+        // 비율 3배 초과 + 시스템 프롬프트 패턴 감지 → 오염된 결과
+        const systemPatterns = /\[ABSOLUTE DIRECTIVE|\[SYSTEM|\[OOC|\[IMPORTANT|DO NOT narrate|DO NOT summarize|DO NOT break|Write the full simulation|as an unbroken narrative|maintaining their established voice/i;
+        if (ratio > 3 && systemPatterns.test(cleaned)) {
+            console.warn('[CAT] 🚨 AI 생성모드 감지: 시스템 프롬프트 오염. 결과 폐기.');
+            return "";
+        }
+        // 비율 4배 초과 (시스템 패턴 없어도) → 이어쓰기 의심, 원문 길이 기준 잘라내기
+        if (ratio > 4) {
+            console.warn(`[CAT] ⚠️ 번역 결과 비정상 길이 (${ratio.toFixed(1)}배). 원문 기준 잘라냄.`);
+            const cutPoint = originalText.length * 3;
+            cleaned = cleaned.substring(0, cutPoint);
+            // 문장 중간 잘림 방지: 마지막 온전한 문장까지만
+            const lastSentence = cleaned.match(/.*[.!?。！？」』\])\n]/s);
+            if (lastSentence) cleaned = lastSentence[0];
         }
     }
     

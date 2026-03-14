@@ -18,7 +18,7 @@
 #cat-trans-container { font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); }
 #cat-drawer-header { display: flex !important; align-items: center !important; justify-content: space-between !important; cursor: pointer !important; padding: 0.5em 0.8em !important; min-height: 3em !important; }
 #cat-drawer-header .inline-drawer-title { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 1.05em; font-weight: 600; color: var(--SmartThemeBodyColor, #000); }
-#cat-drawer-toggle { transition: transform 0.2s ease-in-out; opacity: 0.7; }
+#cat-drawer-toggle { transition: transform 0.2s ease-in-out; }
 .cat-setting-row { margin-bottom: 8px; }
 .cat-setting-row > label { display: block; font-size: 0.95em; font-weight: 600; margin-bottom: 3px; color: var(--SmartThemeBodyColor, #000); }
 .cat-readonly-area { background: var(--SmartThemeBlurTintColor, rgba(128,128,128,0.1)) !important; opacity: 0.7; font-size: 0.8em; cursor: not-allowed; }
