@@ -96,6 +96,7 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
                     } finally { stopGlow(); }
                 } else if (selectedText) {
                     if (!msg.extra) msg.extra = {}; msg.extra.display_text = selectedText;
+                    if (isInput) { msg.mes = selectedText; }
                     stContext.updateMessageBlock(msgId, msg);
                 }
             }, modelKey);
@@ -119,9 +120,9 @@ async function doTranslateMessage(msgId, msg, textToTranslate, isInput, prevTran
         if (!msg.extra.original_mes) msg.extra.original_mes = textToTranslate;
         msg.extra.display_text = result.text;
         if (msg.swipe_id !== undefined) msg.extra.cat_swipe_id = msg.swipe_id;
-        // 🚨 컨텍스트 오염 방지: msg.mes는 원문 유지, display_text만 번역문
-        // SillyTavern은 display_text가 있으면 화면에 그걸 렌더링함
-        // AI 컨텍스트에는 msg.mes(원문)가 전달됨
+        // 🚨 입력 메시지: msg.mes = 번역문(영어) → AI 컨텍스트에 영어 전달
+        // 🚨 출력 메시지: msg.mes = 원문 유지 → 컨텍스트 오염 방지
+        if (isInput) { msg.mes = result.text; }
         
         $(`.mes[mesid="${msgId}"]`).attr('data-cat-translated', 'true');
 
@@ -211,7 +212,9 @@ function revertMessage(id) {
     if (editArea.length > 0) { const originalText = editArea.data('cat-original-text'); if (originalText) { setTextareaValue(editArea[0], originalText); editArea.removeData('cat-original-text').removeData('cat-last-translated').removeData('cat-last-target-lang'); catNotify(`${getThemeEmoji()} 원본 텍스트로 복구 완료!`, "success"); } else { catNotify("⚠️ 복구할 원본이 없습니다.", "warning"); } return; }
     if (msg.extra?.display_text) delete msg.extra.display_text;
     if (msg.extra?.original_mes) {
-        // 🚨 컨텍스트 오염 방지: msg.mes는 이미 원문이므로 복원 불필요
+        // 🚨 입력 메시지는 msg.mes가 번역문이므로 원문 복원 필요
+        // 출력 메시지는 msg.mes가 이미 원문이므로 덮어써도 동일
+        msg.mes = msg.extra.original_mes;
         delete msg.extra.original_mes;
     }
     if (msg.extra?.cat_swipe_id !== undefined) delete msg.extra.cat_swipe_id;
