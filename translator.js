@@ -80,6 +80,26 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
         isToEnglish = detected.isToEnglish; targetLang = detected.targetLang;
     }
 
+    // 🚨 원문-목표 언어 동일 감지: 병기 모드 OFF일 때만 체크
+    const bilingualActive = settings.dialogueBilingual && settings.dialogueBilingual !== 'off';
+    if (!bilingualActive && !silent) {
+        const korCount = (text.match(/[가-힣]/g) || []).length;
+        const engCount = (text.match(/[a-zA-Z]/g) || []).length;
+        const total = korCount + engCount;
+        if (total > 0) {
+            const korRatio = korCount / total;
+            const engRatio = engCount / total;
+            if (engRatio >= 0.7 && targetLang === 'English') {
+                catNotify(`${getThemeEmoji()} 원문이 이미 영어입니다! 목표 언어를 확인해주세요!`, "warning");
+                return null;
+            }
+            if (korRatio >= 0.7 && targetLang === 'Korean') {
+                catNotify(`${getThemeEmoji()} 원문이 이미 한국어입니다! 목표 언어를 확인해주세요!`, "warning");
+                return null;
+            }
+        }
+    }
+
     if (!prevTranslation) {
         const modelKey = getCacheModelKey(settings);
         const cached = await getCached(text, targetLang, modelKey);

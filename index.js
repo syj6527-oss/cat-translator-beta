@@ -41,6 +41,13 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
 
     if (isAutoEvent && mesBlock.attr('data-cat-translated') === 'true') return;
     if (isAutoEvent && msg.extra?.display_text) return;
+    // 🚨 display_text 안전장치: 번역된 상태인데 display_text 누락 시 보정
+    if (msg.extra?.original_mes && !msg.extra?.display_text) { msg.extra.display_text = msg.mes; }
+    // 🚨 Legacy 감지: 구버전에서 msg.mes가 번역문으로 덮어쓰여진 경우 자동 복원
+    if (msg.extra?.original_mes && msg.extra?.display_text && msg.mes === msg.extra.display_text && msg.mes !== msg.extra.original_mes) {
+        msg.mes = msg.extra.original_mes;
+        console.log(`[CAT] 🔧 Legacy 메시지 #${msgId} 자동 복원: msg.mes → 원문`);
+    }
 
     const startGlow = () => mesBlock.find('.cat-mes-trans-btn .cat-emoji-icon').addClass('cat-glow-anim');
     const stopGlow = () => mesBlock.find('.cat-mes-trans-btn .cat-emoji-icon').removeClass('cat-glow-anim');
