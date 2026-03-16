@@ -39,6 +39,18 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
     
     const mesBlock = $(`.mes[mesid="${msgId}"]`);
 
+    // 🚨 스와이프 감지: 자동 번역 가드보다 먼저 실행해야 stale display_text를 삭제함
+    if (msg.extra?.original_mes && msg.extra?.cat_swipe_id !== undefined &&
+        msg.swipe_id !== undefined && msg.swipe_id !== msg.extra.cat_swipe_id) {
+        // 스와이프 변경 → stale 데이터 전부 삭제
+        delete msg.extra.original_mes;
+        delete msg.extra.display_text;
+        delete msg.extra.cat_swipe_id;
+        mesBlock.removeAttr('data-cat-translated');
+        stContext.updateMessageBlock(msgId, msg);
+        console.log(`[CAT] 🔄 스와이프 감지 #${msgId}: 번역 캐시 초기화`);
+    }
+
     if (isAutoEvent && mesBlock.attr('data-cat-translated') === 'true') return;
     if (isAutoEvent && msg.extra?.display_text) return;
     // 🚨 display_text 안전장치: 번역된 상태인데 display_text 누락 시 보정
@@ -63,19 +75,10 @@ async function processMessage(id, isInput = false, abortSignal = null, silent = 
         const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible').first();
         if (editArea.length > 0) { await handleEditAreaTranslation(editArea, msgId, abortSignal); return; }
 
-        // 🚨 스와이프 감지: swipe_id만으로 판정 (텍스트 비교 없음)
-        if (msg.extra?.original_mes && msg.extra?.cat_swipe_id !== undefined &&
-            msg.swipe_id !== undefined && msg.swipe_id !== msg.extra.cat_swipe_id) {
-            // 스와이프 변경 → stale 데이터 전부 삭제
-            delete msg.extra.original_mes;
-            delete msg.extra.display_text;
-            delete msg.extra.cat_swipe_id;
-            mesBlock.removeAttr('data-cat-translated');
-        }
-
-        // 🚨 원본 결정: original_mes가 있으면 무조건 신뢰 (텍스트 비교 안 함)
+        // 🚨 원본 결정: original_mes + display_text + 스와이프 일치 여부로 판정
         let textToTranslate;
-        const hasTranslation = !!msg.extra?.original_mes;
+        const hasTranslation = msg.extra?.original_mes && msg.extra?.display_text &&
+            (msg.extra?.cat_swipe_id === undefined || msg.extra.cat_swipe_id === msg.swipe_id);
         
         if (hasTranslation) {
             textToTranslate = msg.extra.original_mes;

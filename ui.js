@@ -503,7 +503,38 @@ function showDragDictPopup(selectedText, rect, settings, saveSettingsFn) {
 
 export function setupMutationObserver(processMessageFn, revertMessageFn, settings, stContext) {
     const chatContainer = document.getElementById('chat'); if (!chatContainer) { setTimeout(() => setupMutationObserver(processMessageFn, revertMessageFn, settings, stContext), 500); return; }
-    const observer = new MutationObserver((mutations) => { let needsButtonInjection = false; for (const mutation of mutations) { if (mutation.addedNodes.length > 0) { needsButtonInjection = true; break; } } if (needsButtonInjection) { injectMessageButtons(processMessageFn, revertMessageFn); injectInputButtons(settings, stContext, processMessageFn); } });
+    const observer = new MutationObserver((mutations) => { let needsButtonInjection = false; for (const mutation of mutations) { if (mutation.addedNodes.length > 0) { needsButtonInjection = true; break; } } if (needsButtonInjection) { injectMessageButtons(processMessageFn, revertMessageFn); injectInputButtons(settings, stContext, processMessageFn); }
+        // 🚨 편집 모드 호환: 번역된 메시지의 edit textarea에 display_text 표시
+        $('.mes[data-cat-translated="true"]').each(function() {
+            const mesBlock = $(this);
+            const editArea = mesBlock.find('textarea.edit_textarea:visible, textarea.mes_edit_textarea:visible').first();
+            const msgId = parseInt(mesBlock.attr('mesid'));
+            const msg = stContext.chat[msgId];
+            if (!msg?.extra?.display_text) return;
+            
+            if (editArea.length > 0 && !mesBlock.data('cat-edit-active')) {
+                // 편집 모드 진입: display_text를 textarea에 표시
+                mesBlock.data('cat-edit-active', true);
+                if (editArea.val() === msg.mes && msg.mes !== msg.extra.display_text) {
+                    setTextareaValue(editArea[0], msg.extra.display_text);
+                }
+            } else if (editArea.length === 0 && mesBlock.data('cat-edit-active')) {
+                // 편집 모드 종료: msg.mes 상태 복원
+                mesBlock.removeData('cat-edit-active');
+                if (msg.mes === msg.extra.display_text) {
+                    // 수정 없이 저장 → msg.mes를 원문으로 복원
+                    msg.mes = msg.extra.original_mes || msg.mes;
+                } else if (msg.mes !== msg.extra.original_mes && msg.mes !== msg.extra.display_text) {
+                    // 사용자가 새 텍스트로 수정 → 번역 데이터 초기화
+                    delete msg.extra.original_mes;
+                    delete msg.extra.display_text;
+                    delete msg.extra.cat_swipe_id;
+                    mesBlock.removeAttr('data-cat-translated');
+                }
+                stContext.updateMessageBlock(msgId, msg);
+            }
+        });
+    });
     observer.observe(chatContainer, { childList: true, subtree: true });
     injectMessageButtons(processMessageFn, revertMessageFn); injectInputButtons(settings, stContext, processMessageFn); setInterval(() => injectInputButtons(settings, stContext, processMessageFn), 2000);
 }
