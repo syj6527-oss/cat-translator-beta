@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Translator v1.0.2
+// 🐱 Translator v1.0.3
 // ============================================================
 import { extension_settings, getContext } from '../../../../scripts/extensions.js';
 import { catNotify, getThemeEmoji, getCompletionEmoji, setTextareaValue, getModelTheme, detectLanguageDirection, getCacheModelKey } from './utils.js';
@@ -17,6 +17,20 @@ if (!extension_settings[EXT_NAME] && extension_settings["cat-translator-beta"]) 
 }
 let settings = Object.assign({}, defaultSettings, extension_settings[EXT_NAME]);
 
+// 🚨 전역 기준값 영구 보존: extension_settings에 별도 키로 저장
+// 프리셋이 적용된 상태에서 새로고침해도 baseline이 오염되지 않음
+const BASELINE_VERSION = 2;  // 🚨 baseline 구조 변경 시 올려서 강제 리셋
+const _savedBaseline = extension_settings[EXT_NAME]?._baseline;
+const _baselineValid = _savedBaseline && _savedBaseline._v === BASELINE_VERSION;
+const _globalBaseline = _baselineValid
+    ? { userPrompt: _savedBaseline.userPrompt ?? '', temperature: _savedBaseline.temperature ?? 0.3, style: _savedBaseline.style ?? 'normal', _v: BASELINE_VERSION }
+    : { userPrompt: defaultSettings.userPrompt || '', temperature: defaultSettings.temperature ?? 0.3, style: defaultSettings.style || 'normal', _v: BASELINE_VERSION };
+let _isPresetLoading = false;
+if (!_baselineValid) {
+    console.warn('[CAT] ⚠️ baseline 리셋: 구버전/미존재. "설정 저장 및 적용" 버튼으로 기본 설정을 확정해주세요!');
+}
+console.log('[CAT] 🏠 전역 baseline 초기화:', { style: _globalBaseline.style, temp: _globalBaseline.temperature, prompt: _globalBaseline.userPrompt.substring(0, 30) || '(없음)', source: _baselineValid ? '영구저장 복원' : 'defaultSettings (리셋)' });
+
 // 🚨 프로필/모델 상태에 따른 올바른 테마 판별
 function getCurrentTheme() {
     if (settings.profile) {
@@ -28,9 +42,29 @@ function getCurrentTheme() {
     return getModelTheme(settings.directModel);
 }
 
-function saveSettings() {
+function saveSettings(updateBaseline = false) {
     const collected = collectSettings(); Object.assign(settings, collected);
-    extension_settings[EXT_NAME] = { ...settings }; stContext.saveSettingsDebounced();
+    // 🚨 baseline 갱신 조건: 수동 저장 + 프리셋 비활성 상태에서만
+    if (updateBaseline) {
+        const currentChar = (SillyTavern?.getContext?.()?.name2) || stContext.name2 || '';
+        const hasCharPreset = !!(currentChar && settings.charPresetMap?.[currentChar]);
+        const hasSelectedPreset = !!$('#ct-prompt-preset').val();
+        if (hasCharPreset || hasSelectedPreset) {
+            // 🚨 프리셋 활성 중 → baseline 보호, 프리셋만 저장
+            console.log(`[CAT] 🔒 baseline 보호: 프리셋 활성 상태에서 저장 → baseline 유지`);
+            catNotify(`${getThemeEmoji()} 캐릭터 설정 저장됨 (기본 설정은 변경되지 않음)`, "success");
+        } else {
+            // 🚨 프리셋 없음 → 진짜 전역 기본값 갱신
+            _globalBaseline.userPrompt = settings.userPrompt || '';
+            _globalBaseline.temperature = settings.temperature ?? 0.3;
+            _globalBaseline.style = settings.style || 'normal';
+            _globalBaseline._v = BASELINE_VERSION;
+            console.log('[CAT] 🏠 baseline 갱신 (수동 저장):', { style: _globalBaseline.style, temp: _globalBaseline.temperature, prompt: _globalBaseline.userPrompt.substring(0, 30) || '(없음)' });
+        }
+    }
+    // 🚨 baseline을 extension_settings에 영구 저장 (새로고침 후에도 복원)
+    extension_settings[EXT_NAME] = { ...settings, _baseline: { ..._globalBaseline } };
+    stContext.saveSettingsDebounced();
     applyTheme(getCurrentTheme()); updateCacheStats();
 }
 
@@ -238,6 +272,10 @@ function detectDir(text) { return detectLanguageDirection(text, settings); }
 jQuery(async () => {
     try { await initCache(); console.log('[CAT] 🐱 IndexedDB 캐시 초기화 완료'); } catch (e) { console.warn('[CAT] IndexedDB 초기화 실패, 메모리 캐시로 대체:', e); }
     setupSettingsPanel(settings, stContext, saveSettings); setupDragDictionary(settings, saveSettings); setupMutationObserver(processMessage, revertMessage, settings, stContext);
+    // 🚨 첫 마이그레이션 / baseline 리셋 안내
+    if (!_baselineValid) {
+        setTimeout(() => catNotify(`${getThemeEmoji()} 기본 설정을 확인 후 "설정 저장 및 적용" 버튼을 눌러주세요!`, "warning"), 2000);
+    }
     stContext.eventSource.on(stContext.event_types.CHARACTER_MESSAGE_RENDERED, (d) => { if (settings.autoMode === 'none' || settings.autoMode === 'input') return; const msgId = typeof d === 'object' ? d.messageId : d; setTimeout(() => processMessage(msgId, false, null, false, true), 500); });
     stContext.eventSource.on(stContext.event_types.USER_MESSAGE_RENDERED, (d) => { if (settings.autoMode === 'none' || settings.autoMode === 'output') return; const msgId = typeof d === 'object' ? d.messageId : d; setTimeout(() => processMessage(msgId, true, null, false, true), 500); });
     const bodyObserver = new MutationObserver(() => { applyTheme(getCurrentTheme()); }); bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
@@ -252,6 +290,7 @@ jQuery(async () => {
             // 🚨 프리셋 로드 전: 대기 중인 autoSave 취소 + 억제 ON
             clearPendingAutoSave();
             setSuppressAutoSave(true);
+            _isPresetLoading = true;
             
             const presetName = settings.charPresetMap?.[charName];
             if (presetName && settings.promptPresets?.[presetName]) {
@@ -263,28 +302,31 @@ jQuery(async () => {
                 $('#ct-style').val(settings.style);
                 $('#ct-temperature').val(settings.temperature);
                 $('#ct-prompt-preset').val(presetName);
-                // 🚨 직접 저장 (autoSave 디바운스 충돌 방지)
-                extension_settings[EXT_NAME] = { ...settings };
+                // 🚨 직접 저장 (autoSave 디바운스 충돌 방지) + baseline 영구 보존
+                extension_settings[EXT_NAME] = { ...settings, _baseline: { ..._globalBaseline } };
                 stContext.saveSettingsDebounced();
                 catNotify(`${getThemeEmoji()} ${charName} → 프롬프트 "${presetName}" 자동 로드!`, "success");
+                console.log(`[CAT] 🔗 프리셋 적용: "${presetName}" →`, { style: settings.style, temp: settings.temperature, prompt: settings.userPrompt.substring(0, 30) });
             } else {
-                // 매핑 없는 캐릭터 → 기본값으로 리셋
-                settings.userPrompt = '';
-                settings.temperature = 0.3;
-                settings.style = 'normal';
-                $('#ct-user-prompt').val('');
-                $('#ct-style').val('normal');
-                $('#ct-temperature').val(0.3);
+                // 🚨 FIX: 매핑 없는 캐릭터 → 전역 baseline으로 복원 (하드코딩 기본값 X)
+                settings.userPrompt = _globalBaseline.userPrompt;
+                settings.temperature = _globalBaseline.temperature;
+                settings.style = _globalBaseline.style;
+                $('#ct-user-prompt').val(settings.userPrompt);
+                $('#ct-style').val(settings.style);
+                $('#ct-temperature').val(settings.temperature);
                 $('#ct-prompt-preset').val('');
-                // 🚨 직접 저장
-                extension_settings[EXT_NAME] = { ...settings };
+                // 🚨 직접 저장 + baseline 영구 보존
+                extension_settings[EXT_NAME] = { ...settings, _baseline: { ..._globalBaseline } };
                 stContext.saveSettingsDebounced();
+                console.log(`[CAT] 🏠 baseline 복원 (프리셋 없음):`, { style: _globalBaseline.style, temp: _globalBaseline.temperature, prompt: _globalBaseline.userPrompt.substring(0, 30) || '(없음)' });
             }
             
             // 🚨 프리셋 로드 완료: 억제 OFF
+            _isPresetLoading = false;
             setSuppressAutoSave(false);
         }, 500);
     });
-    console.log('[CAT] 🐱 Translator v1.0.2 로드 완료!');
+    console.log('[CAT] 🐱 Translator v1.0.3 로드 완료!');
 });
 

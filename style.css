@@ -1,5 +1,5 @@
 /* ============================================================
-   🐱 Translator v1.0.2 - style.css
+   🐱 Translator v1.0.3 - style.css
    ============================================================ */
 [data-cat-theme="cat"], body:not([data-cat-theme]) {
     --ca-glow: rgba(255, 165, 0, 0.6);
@@ -18,7 +18,8 @@
 #cat-trans-container { font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); }
 #cat-drawer-header { display: flex !important; align-items: center !important; justify-content: space-between !important; cursor: pointer !important; padding: 0.5em 0.8em !important; min-height: 3em !important; }
 #cat-drawer-header .inline-drawer-title { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 1.05em; font-weight: 600; color: var(--SmartThemeBodyColor, #000); }
-#cat-drawer-toggle { transition: transform 0.2s ease-in-out; }
+#cat-drawer-toggle { transition: transform 0.2s ease-in-out; display: flex !important; align-items: center !important; align-self: center !important; justify-content: center !important; line-height: 1 !important; height: 100% !important; }
+#cat-drawer-header i#cat-drawer-toggle { line-height: 1 !important; }
 .cat-setting-row { margin-bottom: 8px; }
 .cat-setting-row > label { display: block; font-size: 0.95em; font-weight: 600; margin-bottom: 3px; color: var(--SmartThemeBodyColor, #000); }
 .cat-readonly-area { background: var(--SmartThemeBlurTintColor, rgba(128,128,128,0.1)) !important; opacity: 0.7; font-size: 0.8em; cursor: not-allowed; }
@@ -58,12 +59,12 @@
 .cat-mes-revert-btn { font-size: 1em; color: var(--ca-accent); }
 
 /* 🚨 마스터 튜닝: 하단 버튼 간격(margin) 추가 및 inline-flex 적용으로 아이콘 겹침 완전 방지 */
-.cat-input-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0 !important; margin: 0 4px !important; flex-shrink: 0; border: none !important; outline: none !important; box-shadow: none !important; -webkit-tap-highlight-color: transparent; box-sizing: border-box; background: transparent !important; }
+.cat-input-icon { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0 !important; margin: 0 2px !important; flex-shrink: 0; border: none !important; outline: none !important; box-shadow: none !important; -webkit-tap-highlight-color: transparent; box-sizing: border-box; background: transparent !important; }
 .cat-input-icon:active { opacity: 0.6; }
 .cat-input-icon i { color: var(--ca-accent); font-size: 0.9em; }
 .cat-input-icon .cat-emoji-icon { font-size: 1.2em; pointer-events: none; }
 
-#send_but { margin-left: 8px !important; position: relative; z-index: 1; }
+#send_but { margin-left: 4px !important; position: relative; z-index: 1; }
 
 .cat-notification { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 30px; color: white; font-weight: bold; font-size: 13px; z-index: 2147483647 !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; white-space: nowrap; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; text-align: center; font-family: var(--mainFontFamily, 'Noto Sans', sans-serif); backdrop-filter: blur(8px); }
 .cat-notification.show { }

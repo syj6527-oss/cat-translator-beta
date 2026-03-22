@@ -1,8 +1,8 @@
 // ============================================================
-// 🐱 Translator v1.0.2 - translator.js
+// 🐱 Translator v1.0.3 - translator.js
 // ============================================================
 import { secret_state, SECRET_KEYS } from '../../../../scripts/secrets.js';
-import { cleanResult, catNotify, detectLanguageDirection, getThemeEmoji, getCompletionEmoji, getCacheModelKey } from './utils.js';
+import { cleanResult, catNotify, detectLanguageDirection, getThemeEmoji, getCompletionEmoji, getCacheModelKey, applyPreReplaceWithCount } from './utils.js';
 import { getCached, setCached } from './cache.js';
 
 export const SYSTEM_SHIELD = `[ABSOLUTE DIRECTIVE - VIOLATION = FAILURE]
@@ -49,7 +49,11 @@ Output ONLY the final translated text.`;
 export const STYLE_PRESETS = {
     normal: { label: '일반 번역', prompt: 'Translate accurately and faithfully.', temperature: 0.3 },
     novel: { label: '소설 스타일', prompt: 'Use literary expressions while preserving the original nuance. Describe emotions richly.', temperature: 0.5 },
-    casual: { label: '캐주얼', prompt: 'Translate naturally in casual conversational tone. Contractions and colloquialisms are welcome.', temperature: 0.4 }
+    casual: { label: '캐주얼', prompt: 'Translate naturally in casual conversational tone. Contractions and colloquialisms are welcome.', temperature: 0.4 },
+    natural: { label: '번역체 탈피', prompt: 'Translate into natural, native-sounding Korean. Avoid translationese. Restructure sentences to follow natural Korean word order. Never use stiff constructions like "~했다는 것을", "~에 대해서", "~하는 것은" when a more natural Korean alternative exists.', temperature: 0.4 },
+    formal: { label: '존댓말 고정', prompt: 'Translate all text using formal/polite Korean speech (존댓말/합쇼체). All sentence endings must use -습니다, -합니다, -입니다 forms consistently.', temperature: 0.3 },
+    informal: { label: '반말 고정', prompt: 'Translate all text using casual/informal Korean speech (반말). Use -해, -야, -지, -거든 endings. Make it sound like close friends talking.', temperature: 0.4 },
+    literary: { label: '문어체', prompt: 'Use formal written/literary Korean style (문어체). Employ refined vocabulary, longer sentence structures, and elegant expressions suitable for published novels.', temperature: 0.5 }
 };
 
 const SAFETY_SETTINGS = [
@@ -109,23 +113,22 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
         }
     }
 
-    const dictLines = (settings.dictionary && settings.dictionary.trim()) ? settings.dictionary.split('\n').filter(l => l.includes('=')) : [];
-    if (dictLines.length > 0 && !silent) {
-        let matchCount = 0;
-        dictLines.forEach(line => {
-            const orig = line.split('=')[0].trim();
-            if (orig && text.toLowerCase().includes(orig.toLowerCase())) matchCount++;
-        });
-        if (matchCount > 0) catNotify(`🐾 사전 ${matchCount}개 단어 매칭됨!`, "success");
+    // 🚨 사전 pre-replace: API 호출 전에 고유명사 미리 치환 (프롬프트 glossary와 이중 안전망)
+    const { swapped: preSwapped, matchCount: dictMatchCount } = applyPreReplaceWithCount(text.trim(), settings.dictionary, isToEnglish);
+    if (dictMatchCount > 0) {
+        console.log(`[CAT] 📖 사전 pre-replace: ${dictMatchCount}개 치환 완료`);
+        if (!silent) catNotify(`🐾 사전 ${dictMatchCount}개 단어 치환 적용!`, "success");
     }
-    const preSwapped = text.trim();
 
     const prompt = assemblePrompt(preSwapped, targetLang, isToEnglish, settings, { prevTranslation, contextMessages });
 
     try {
         let result = ""; let thought = null;
         if (settings.profile && stContext.ConnectionManagerRequestService) {
-            const response = await stContext.ConnectionManagerRequestService.sendRequest(settings.profile, [{ role: "user", content: prompt }], settings.maxTokens || 8192);
+            // 🚨 프로필 모드: systemInstruction 미지원 → 유저 메시지에 합침
+            console.log('[CAT] 🔌 프로필 모드: SYSTEM_SHIELD → user 메시지 합침');
+            const fullPrompt = SYSTEM_SHIELD + '\n' + prompt;
+            const response = await stContext.ConnectionManagerRequestService.sendRequest(settings.profile, [{ role: "user", content: fullPrompt }], settings.maxTokens || 8192);
             result = typeof response === 'string' ? response : (response.content || "");
         } else {
             // Vertex 모델 분기
@@ -154,7 +157,8 @@ export async function fetchTranslation(text, settings, stContext, options = {}) 
             
             const baseTemp = parseFloat(settings.temperature) || 0.3; const temperature = prevTranslation ? Math.min(baseTemp + 0.3, 1.0) : baseTemp; const maxTokens = parseInt(settings.maxTokens) || 8192;
             
-            const fetchBody = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature, maxOutputTokens: maxTokens }, safetySettings: SAFETY_SETTINGS };
+            const fetchBody = { systemInstruction: { parts: [{ text: SYSTEM_SHIELD }] }, contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature, maxOutputTokens: maxTokens }, safetySettings: SAFETY_SETTINGS };
+            console.log(`[CAT] 🧠 Direct 모드: systemInstruction 분리 | 모델: ${actualModel} | temp: ${temperature} | maxTokens: ${maxTokens}`);
             
             // Vertex 프로젝트 방식은 Authorization 헤더 사용
             let extraHeaders = {};
@@ -192,7 +196,7 @@ function assemblePrompt(text, targetLang, isToEnglish, settings, options = {}) {
     if (bilingualMode === 'off' && text.length < 100 && !prevTranslation && contextMessages.length === 0 && (!settings.dictionary || !settings.dictionary.trim())) {
         const lang = isToEnglish ? 'English' : targetLang; return `${text}\n\n(Translate the above to ${lang}. Reply with ONLY the translation. Keep all formatting exactly.)`;
     }
-    let parts = [SYSTEM_SHIELD];
+    let parts = [];  // 🚨 SYSTEM_SHIELD는 Gemini systemInstruction으로 분리됨
     const preset = STYLE_PRESETS[settings.style] || STYLE_PRESETS.normal; parts.push(`[Style: ${preset.prompt}]`);
     
     // 🚨 병기 모드 ON이면 지문 번역 방향을 Korean으로 강제 (목표 언어 설정과 무관하게)

@@ -1,5 +1,5 @@
 // ============================================================
-// 🐱 Translator v1.0.2 - ui.js
+// 🐱 Translator v1.0.3 - ui.js
 // ============================================================
 import { catNotify, catNotifyProgress, getThemeEmoji, getCompletionEmoji, getModelTheme, setTextareaValue } from './utils.js';
 import { getStats, clearAllCache, exportSettings, importSettings, getHistory, togglePin } from './cache.js';
@@ -295,7 +295,7 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
     });
     
     $('#ct-context-range').on('change', function () { let val = parseInt($(this).val()) || 0; val = Math.min(6, Math.max(0, val)); $(this).val(val); });
-    $('#cat-save-btn').on('click', () => { saveSettingsFn(); catNotify(`${getThemeEmoji()} 저장 완료! 테마가 동기화되었습니다.`, "success"); });
+    $('#cat-save-btn').on('click', () => { saveSettingsFn(true); catNotify(`${getThemeEmoji()} 저장 완료! 기본 설정이 확정되었습니다.`, "success"); });
     $('#ct-clear-cache').on('click', async () => { await clearAllCache(); updateCacheStats(); catNotify(`${getThemeEmoji()} 캐시 전체 삭제 완료! 📂`, "success"); });
     $('#ct-reset-settings').on('click', () => {
         if (!confirm('모든 설정을 초기값으로 되돌리시겠습니까?')) return;
@@ -307,11 +307,11 @@ export function setupSettingsPanel(settings, stContext, saveSettingsFn) {
         settings.promptPresets = {}; settings.charPresetMap = {}; $('#ct-prompt-preset').val('').find('option:not(:first)').remove();
         $('#ct-direct-settings').show(); $('#ct-vertex-extra').hide();
         $('#cat-input-btn, #cat-input-revert, #cat-bulk-btn').show(); $('.cat-btn-group').removeClass('cat-hidden');
-        saveSettingsFn(); catNotify(`${getThemeEmoji()} 설정이 초기화되었습니다!`, "success");
+        saveSettingsFn(true); catNotify(`${getThemeEmoji()} 설정이 초기화되었습니다!`, "success");
     });
     $('#ct-export').on('click', () => { saveSettingsFn(); exportSettings(settings); catNotify(`${getThemeEmoji()} 설정 내보내기 완료!`, "success"); });
     $('#ct-import-btn').on('click', () => $('#ct-import-file').click());
-    $('#ct-import-file').on('change', async function () { const file = this.files[0]; if (!file) return; try { const imported = await importSettings(file); Object.assign(settings, imported); saveSettingsFn(); catNotify(`${getThemeEmoji()} 설정 가져오기 완료! 새로고침하면 적용됩니다.`, "success"); } catch (e) { catNotify(`${getThemeEmoji()} 오류: ${e.message}`, "error"); } this.value = ''; });
+    $('#ct-import-file').on('change', async function () { const file = this.files[0]; if (!file) return; try { const imported = await importSettings(file); Object.assign(settings, imported); saveSettingsFn(true); catNotify(`${getThemeEmoji()} 설정 가져오기 완료! 새로고침하면 적용됩니다.`, "success"); } catch (e) { catNotify(`${getThemeEmoji()} 오류: ${e.message}`, "error"); } this.value = ''; });
     
     const initialProfileName = ($('#ct-profile option:selected').text() || '').toLowerCase();
     const initialModel = (settings.directModel || '').toLowerCase();
@@ -481,6 +481,7 @@ function showBulkPopup(event, settings, stContext, processMessageFn) {
 }
 
 async function executeBulkTranslation(count, settings, stContext, processMessageFn) {
+    const BULK_CONCURRENCY = 2;  // 🚨 동시 워커 수 (함수 최상단 선언)
     const allMes = $('.mes'); let targets = []; let originalCount = 0;
     if (count === 'all') { allMes.each(function () { targets.push($(this)); }); } else { const num = parseInt(count); const start = Math.max(0, allMes.length - num); allMes.slice(start).each(function () { targets.push($(this)); }); }
     originalCount = targets.length;
@@ -494,14 +495,26 @@ async function executeBulkTranslation(count, settings, stContext, processMessage
     $('#cat-bulk-btn').off('click').on('click', (e) => { e.preventDefault(); abortHandler(); });
 
     const progressEl = catNotifyProgress(`${getThemeEmoji()} 벌크 번역 중... (0/${total}) [클릭시 중단]`, abortHandler);
-    for (const el of targets) {
-        if (bulkAbortController.signal.aborted) break;
-        const msgId = el.attr('mesid'); const isUser = el.hasClass('mes_user');
-        await processMessageFn(msgId, isUser, bulkAbortController.signal, true);
-        completed++;
-        if (progressEl.length) progressEl.text(`${getThemeEmoji()} 벌크 번역 중... (${completed}/${total}) [클릭시 중단]`);
-        if (!bulkAbortController.signal.aborted) await new Promise(r => setTimeout(r, 300));
-    }
+    const bulkStartTime = performance.now();
+    console.log(`[CAT] ⚡ 벌크 시작: ${total}개 메시지, 동시 ${BULK_CONCURRENCY}개 병렬`);
+    // 🚨 병렬 처리: 동시 2개 워커로 벌크 속도 ~2배 향상
+    let taskIdx = 0;
+    const bulkWorker = async () => {
+        while (taskIdx < targets.length) {
+            if (bulkAbortController.signal.aborted) return;
+            const i = taskIdx++;
+            if (i >= targets.length) return;
+            const el = targets[i];
+            const msgId = el.attr('mesid'); const isUser = el.hasClass('mes_user');
+            await processMessageFn(msgId, isUser, bulkAbortController.signal, true);
+            completed++;
+            if (progressEl.length) progressEl.text(`${getThemeEmoji()} 벌크 번역 중... (${completed}/${total}) [클릭시 중단]`);
+            if (!bulkAbortController.signal.aborted) await new Promise(r => setTimeout(r, 150));
+        }
+    };
+    await Promise.all(Array.from({ length: BULK_CONCURRENCY }, () => bulkWorker()));
+    const bulkElapsed = ((performance.now() - bulkStartTime) / 1000).toFixed(1);
+    console.log(`[CAT] ⚡ 벌크 완료: ${completed}/${total}개, ${bulkElapsed}초 소요`);
     progressEl.remove(); $('#cat-bulk-btn').html('<span class="cat-emoji-icon">⚡</span>');
     $('#cat-bulk-btn').off('click').on('click', (e) => { e.preventDefault(); e.stopPropagation(); showBulkPopup(e, settings, stContext, processMessageFn); });
     if (bulkAbortController.signal.aborted) catNotify(`🔴 번역 중단됨 (${completed}개 완료)`, "error"); else catNotify(`${getCompletionEmoji()} 벌크 완료! ${completed}개 번역${skipped > 0 ? ', ' + skipped + '개 스킵' : ''}`, "success");
